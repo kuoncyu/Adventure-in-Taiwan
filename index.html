@@ -202,13 +202,13 @@ body{
 .cs-card:active{transform:scale(.97);}
 .cs-card.sel{border-color:var(--gold-lt);background:rgba(217,178,95,.18);box-shadow:0 0 0 2px rgba(217,178,95,.25);}
 .cs-card .c-emo{font-size:2.4rem;display:block;}
-.cs-card .c-face{width:100%;aspect-ratio:1/1;object-fit:cover;object-position:top;border-radius:10px;display:block;}
+.cs-card .c-face{width:100%;height:172px;object-fit:contain;object-position:center;border-radius:10px;display:block;background:rgba(0,0,0,.15);}
 .cs-card .c-name{font-family:var(--serif);font-weight:700;color:var(--gold-lt);margin-top:4px;font-size:1rem;}
 .cs-card .c-home{font-size:.68rem;color:var(--mist);margin-top:3px;line-height:1.5;}
 .c-gsym{font-weight:700;}
 .cs-card .c-gsym{color:var(--gold-lt);opacity:.85;}
 .d-name .c-gsym{color:var(--seal);margin-left:2px;}
-.cs-detail .d-portrait{width:100%;max-height:260px;object-fit:cover;object-position:top;border-radius:10px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.25);}
+.cs-detail .d-portrait{width:100%;max-height:320px;object-fit:contain;object-position:center;border-radius:10px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.25);background:rgba(0,0,0,.15);}
 .cs-detail{margin-top:16px;padding:16px 18px;}
 .cs-detail .d-name{font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--ink-text);}
 .cs-detail .d-line{font-size:.85rem;line-height:1.85;margin-top:6px;}
@@ -496,9 +496,11 @@ body{
   <div class="title-sub">台 灣 地 名 尋 根 · R P G</div>
   <p class="title-blurb" id="title-blurb-text"></p>
   <div class="title-actions">
-    <button class="brass-btn" id="btn-start-new">開始旅程</button>
+    <button class="brass-btn" id="btn-continue" style="display:none;">▶ 繼續旅程</button>
+    <button class="brass-btn ghost small" id="btn-start-new">開始旅程</button>
     <button class="brass-btn ghost small" id="btn-load-save">讀取存檔代碼</button>
     <button class="brass-btn ghost small" id="btn-about">關於</button>
+    <button class="brass-btn ghost small" id="btn-clear-data">🗑️ 清除資料</button>
   </div>
   <div class="title-foot">改編自《台灣地名尋根》資料庫 · 574 則地名記憶等待被拾起</div>
 </div>
@@ -2581,6 +2583,7 @@ function syncBgm(screenId){
 }
 function showScreen(id){
   syncBgm(id);
+  autosave();
   if (id !== "dialogue" && curTopbarSceneName !== null){
     curTopbarSceneName = null;
     renderTopbar();
@@ -3352,6 +3355,101 @@ function loadSaveCode(code){
   }catch(e){ return false; }
 }
 
+// ---------- 本地保存進度 (localStorage) ----------
+const LOCAL_SAVE_KEY = "twlp-rpg-localsave-v1";
+const RESOURCE_CACHE_DB = "resource-pack-cache";
+function saveLocalProgress(){
+  try{ localStorage.setItem(LOCAL_SAVE_KEY, serializeSave()); return true; }
+  catch(e){ return false; }
+}
+function hasLocalProgress(){
+  try{ return !!localStorage.getItem(LOCAL_SAVE_KEY); }
+  catch(e){ return false; }
+}
+function loadLocalProgress(){
+  try{
+    const code = localStorage.getItem(LOCAL_SAVE_KEY);
+    return code ? loadSaveCode(code) : false;
+  }catch(e){ return false; }
+}
+function clearLocalProgress(){
+  try{ localStorage.removeItem(LOCAL_SAVE_KEY); return true; }
+  catch(e){ return false; }
+}
+function clearResourceCache(){
+  return new Promise((resolve)=>{
+    try{
+      if (!("indexedDB" in window)) { resolve(false); return; }
+      const req = indexedDB.deleteDatabase(RESOURCE_CACHE_DB);
+      req.onsuccess = ()=>resolve(true);
+      req.onerror = ()=>resolve(false);
+      req.onblocked = ()=>resolve(true);
+    }catch(e){ resolve(false); }
+  });
+}
+function autosave(){
+  // 只有在玩家已經選定主角、旅程已開始之後才自動保存
+  if (state && state.charKey) saveLocalProgress();
+}
+function refreshContinueButton(){
+  const cBtn = document.getElementById("btn-continue");
+  const sBtn = document.getElementById("btn-start-new");
+  if (!cBtn || !sBtn) return;
+  if (hasLocalProgress()){
+    cBtn.style.display = "";
+    sBtn.classList.add("ghost","small");
+    sBtn.textContent = "開始新旅程";
+  } else {
+    cBtn.style.display = "none";
+    sBtn.classList.remove("ghost","small");
+    sBtn.textContent = "開始旅程";
+  }
+}
+
+function openClearDataModal(){
+  const saveExists = hasLocalProgress();
+  const back = openModal(
+    '<div class="detail-title">🗑️ 清除資料</div>'+
+    '<div class="detail-body" style="font-size:.82rem;line-height:1.8;">你可以分別清除下列資料。清除圖檔快取後，下次開啟會重新下載角色與場景圖檔。</div>'+
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">'+
+      '<button class="brass-btn ghost small" id="clear-save-btn">🧾 清除本機存檔進度'+(saveExists?'':'（目前無資料）')+'</button>'+
+      '<button class="brass-btn ghost small" id="clear-cache-btn">📦 清除已下載的圖檔資源包快取</button>'+
+      '<button class="brass-btn small" id="clear-all-btn">⚠️ 全部清除並重新整理</button>'+
+    '</div>'
+    , {center:true});
+  back.querySelector("#clear-save-btn").addEventListener("click", ()=>{
+    sfx("click");
+    clearLocalProgress();
+    toast("已清除本機存檔進度");
+    refreshContinueButton();
+    back.remove();
+  });
+  back.querySelector("#clear-cache-btn").addEventListener("click", async ()=>{
+    sfx("click");
+    const ok = await clearResourceCache();
+    toast(ok ? "已清除圖檔快取，重新整理頁面後將重新下載" : "清除失敗，請改用瀏覽器設定清除網站資料");
+  });
+  back.querySelector("#clear-all-btn").addEventListener("click", ()=>{
+    sfx("click");
+    const back2 = openModal(
+      '<div class="detail-title">確定要全部清除？</div>'+
+      '<div class="detail-body">這會刪除本機存檔進度與圖檔快取，且無法復原。</div>'+
+      '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
+        '<button class="brass-btn ghost small" id="clear-all-cancel">取消</button>'+
+        '<button class="brass-btn small" id="clear-all-confirm">確定清除</button>'+
+      '</div>'
+      , {center:true});
+    back2.querySelector("#clear-all-cancel").addEventListener("click", ()=>{ sfx("click"); back2.remove(); });
+    back2.querySelector("#clear-all-confirm").addEventListener("click", async ()=>{
+      sfx("click");
+      clearLocalProgress();
+      await clearResourceCache();
+      toast("已清除完成，即將重新整理頁面…");
+      setTimeout(()=>location.reload(), 900);
+    });
+  });
+}
+
 function openSaveModal(){
   const code = serializeSave();
   const back = openModal(
@@ -3523,7 +3621,7 @@ function renderCharGrid(){
     const div = document.createElement("div");
     div.className = "cs-card" + (csPick===c.key ? " sel" : "");
     div.innerHTML =
-      (art ? '<img class="c-face" src="'+art.face+'" alt="'+escapeHtml(c.name)+'">' : '<span class="c-emo">'+c.icon+'</span>') +
+      (art ? '<img class="c-face" src="'+art.full+'" alt="'+escapeHtml(c.name)+'">' : '<span class="c-emo">'+c.icon+'</span>') +
       '<div class="c-name">'+escapeHtml(c.name)+' <span class="c-gsym">'+gsym+'</span></div>'+
       '<div class="c-home">'+escapeHtml(c.home)+'</div>';
     div.addEventListener("click", ()=>{
@@ -3570,9 +3668,45 @@ document.getElementById("cs-confirm").addEventListener("click", ()=>{
 
 document.getElementById("btn-start-new").addEventListener("click", ()=>{
   sfx("click");
+  if (hasLocalProgress()){
+    const back = openModal(
+      '<div class="detail-title">開始新旅程？</div>'+
+      '<div class="detail-body">偵測到本機已有保存的進度，開始新旅程並繼續遊玩後將會覆蓋掉原本的本機存檔。建議先點選「繼續旅程」，或於「清除資料」中先取得存檔代碼備份。確定要開始新的旅程嗎？</div>'+
+      '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
+        '<button class="brass-btn ghost small" id="startnew-cancel">取消</button>'+
+        '<button class="brass-btn small" id="startnew-confirm">開始新旅程</button>'+
+      '</div>'
+      , {center:true});
+    back.querySelector("#startnew-cancel").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
+    back.querySelector("#startnew-confirm").addEventListener("click", ()=>{
+      sfx("click"); back.remove();
+      enterFullscreen();
+      openCharSelect();
+    });
+    return;
+  }
   enterFullscreen();
   openCharSelect();          // 名字直接沿用所選角色，不再另外取名
 });
+
+document.getElementById("btn-continue").addEventListener("click", ()=>{
+  sfx("click");
+  if (loadLocalProgress()){
+    enterFullscreen();
+    renderTopbar(); renderWorldMap(); showScreen("worldmap");
+    toast("已載入本機存檔，歡迎回來，"+state.playerName);
+  } else {
+    toast("找不到本機存檔");
+    refreshContinueButton();
+  }
+});
+
+document.getElementById("btn-clear-data").addEventListener("click", ()=>{
+  sfx("click");
+  openClearDataModal();
+});
+
+refreshContinueButton();
 
 // ---------- 音訊設定 ----------
 function openAudioModal(){
@@ -3691,6 +3825,8 @@ function backToMainMenu(){
     goToTitleMenu();
   }
 }
+
+window.addEventListener("beforeunload", autosave);
 
 showScreen("title");
 })();
