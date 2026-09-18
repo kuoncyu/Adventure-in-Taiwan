@@ -2510,6 +2510,10 @@ function syncBgm(screenId){
 }
 function showScreen(id){
   syncBgm(id);
+  if (id !== "dialogue" && curTopbarSceneName !== null){
+    curTopbarSceneName = null;
+    renderTopbar();
+  }
   screens.forEach(s => document.getElementById("screen-"+s).classList.toggle("hidden", s!==id));
   document.getElementById("bottom-nav").classList.toggle("hidden", id==="title" || id==="dialogue");
   document.querySelectorAll("#bottom-nav button").forEach(b=>{
@@ -2576,21 +2580,28 @@ function stopScene(stop){
 // 各大區的預設開場場景（同樣是通用圖，只是挑一張最貼近該區印象的）
 const REGION_BG = { north:"harbor", central:"field", south:"oldstreet", east:"mountain", island:"ocean" };
 let curSceneBg = null;
+let curTopbarSceneName = null; // 目前在對話中顯示於左上角的場景名稱（取代玩家名字）
 function setSceneBg(id){
   const el = dlgSceneBgEl(); if (!el) return;
-  if (!id || !SCENE_BG[id]){ curSceneBg = null; el.classList.remove("on"); return; }
+  if (!id || !SCENE_BG[id]){
+    curSceneBg = null; el.classList.remove("on");
+    if (curTopbarSceneName !== null){ curTopbarSceneName = null; renderTopbar(); }
+    return;
+  }
   if (curSceneBg === id) return;
   curSceneBg = id;
   const sb = SCENE_BG[id];
   const bgUrl = sb.photoUrl ? sb.photoUrl : ("data:image/svg+xml;utf8," + encodeURIComponent(sb.svg));
   el.style.backgroundImage = "url(\"" + bgUrl + "\")";
   el.classList.add("on");
+  curTopbarSceneName = sb.name;
+  renderTopbar();
 }
 // 場景切換時插入一句旁白，讓劇情多一層畫面感
 function sceneNarration(id, seed){
   const sb = SCENE_BG[id]; if (!sb) return null;
   const f = sb.flavor[(seed||0) % sb.flavor.length];
-  return {type:"line", speaker:"旁白", icon:sb.icon, text:f, bg:id};
+  return {type:"line", speaker:"旁白", text:f, bg:id};
 }
 const dlgSceneLabelEl = () => document.getElementById("dlg-scene-label");
 const dlgTapHintEl = () => document.getElementById("dlg-tap-hint");
@@ -2702,6 +2713,7 @@ function buildMainQuestSteps(region){
 function playSequence(steps, onDone){
   dlgSteps = steps; dlgIdx = -1; dlgOnDone = onDone;
   dlgCurScene = "🌫️"; dlgCurLabel = ""; curSceneBg = null;
+  if (curTopbarSceneName !== null){ curTopbarSceneName = null; renderTopbar(); }
   const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
   showScreen("dialogue");
   nextDlgStep();
@@ -3287,7 +3299,10 @@ function renderTopbar(){
     bar.className = "topbar"; bar.id = "topbar";
     document.getElementById("app").insertBefore(bar, document.getElementById("app").firstChild);
   }
-  bar.innerHTML = '<div class="id">'+playerIcon()+' <span class="pname">'+escapeHtml(playerName())+'</span></div>'+
+  const idHtml = curTopbarSceneName
+    ? '<span class="pname scene-name">'+escapeHtml(curTopbarSceneName)+'</span>'
+    : playerIcon()+' <span class="pname">'+escapeHtml(playerName())+'</span>';
+  bar.innerHTML = '<div class="id">'+idHtml+'</div>'+
     '<div class="stats">✦地名學識 <b>'+state.loreScore+'</b> ・ 🎒 <b>'+state.party.length+'</b>/'+Object.keys(COMPANIONS).length+' 夥伴</div>'+
     '<div style="display:flex;gap:6px;">'+
       '<button class="menu-btn" id="topbar-audio">🔊</button>'+
