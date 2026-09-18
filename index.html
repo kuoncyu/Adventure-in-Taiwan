@@ -135,13 +135,13 @@ body{
 .dlg-scene-bg{position:absolute;inset:0;background-size:cover;background-position:center bottom;opacity:0;transition:opacity .7s ease;pointer-events:none;}
 .dlg-scene-bg.on{opacity:1;}
 .dlg-scene-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(12,9,6,.45),rgba(12,9,6,.12) 45%,rgba(12,9,6,.82));}
-.dlg-stage .scene-emoji,.dlg-stage .dlg-scene-label{position:relative;z-index:2;}
+.dlg-stage .scene-emoji{position:relative;z-index:2;}
 .dlg-stage .scene-emoji{font-size:5.5rem;filter:drop-shadow(0 10px 20px rgba(0,0,0,.5));animation:floaty 4s ease-in-out infinite;}
 @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .stage-portrait{max-width:88%;max-height:340px;border-radius:14px;box-shadow:0 14px 30px rgba(0,0,0,.5);border:1px solid rgba(176,134,63,.5);animation:portraitIn .35s ease;object-fit:cover;}
 @keyframes portraitIn{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
 .dlg-speaker .sp-face{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px;border:1px solid var(--seal);}
-.dlg-scene-label{position:absolute;top:16px;left:0;right:0;text-align:center;font-family:var(--serif);color:var(--gold-lt);font-size:.85rem;letter-spacing:3px;}
+.dlg-stage .dlg-scene-label{position:absolute!important;top:14px;left:50%;right:auto;transform:translateX(-50%);z-index:3;text-align:center;font-family:var(--serif);color:var(--gold-lt);font-size:.85rem;letter-spacing:3px;background:rgba(12,9,6,.45);padding:4px 16px;border-radius:20px;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;}
 .dlg-box-wrap{padding:0 14px 18px;}
 .dlg-box{
   padding:16px 18px 18px;min-height:118px;
@@ -2650,16 +2650,16 @@ function buildStopSteps(stop, region, ctx){
   const fb = {name:stop.npcName, icon:stop.npcIcon};
   const steps = [];
   const pages = linesToSteps(filterCastLines(stop.pages, region), fb);
-  pages[0].scene = stop.sceneEmoji; pages[0].label = stop.npcName;
+  pages[0].scene = stop.sceneEmoji;
   // 通用場景：換景時先來一句旁白鋪陳畫面
   const sc = stopScene(stop);
   if (ctx && ctx.bg !== sc){
     ctx.bg = sc;
     const nar = sceneNarration(sc, stop.placeId);
-    if (nar){ nar.scene = stop.sceneEmoji; nar.label = stop.npcName; steps.push(nar); }
+    if (nar){ nar.scene = stop.sceneEmoji; steps.push(nar); }
   }
   // 主角抵達時先開口
-  const arrive = pline("arrive"); arrive.scene = stop.sceneEmoji; arrive.label = stop.npcName; arrive.bg = sc;
+  const arrive = pline("arrive"); arrive.scene = stop.sceneEmoji; arrive.bg = sc;
   steps.push(arrive);
   pages.forEach(p => steps.push(p));
   // 聽完介紹後的反應／追問
@@ -2915,11 +2915,11 @@ function buildChainSteps(chain){
     if (sc !== lastBg){
       lastBg = sc;
       const nar = sceneNarration(sc, stop.placeId);
-      if (nar){ nar.scene = stop.sceneEmoji; nar.label = stop.npcName+"・"+placesData[stop.placeId].n; steps.push(nar); }
+      if (nar){ nar.scene = stop.sceneEmoji; steps.push(nar); }
     }
     stop.pages.forEach((pg,i) => {
       const s = {type:"line", speaker:stop.npcName, icon:stop.npcIcon, text:pg};
-      if (i===0){ s.scene = stop.sceneEmoji; s.label = stop.npcName+"・"+placesData[stop.placeId].n; s.bg = sc; }
+      if (i===0){ s.scene = stop.sceneEmoji; s.bg = sc; }
       steps.push(s);
     });
     steps.push(pline("curious"));
@@ -3300,10 +3300,8 @@ function renderTopbar(){
     bar.className = "topbar"; bar.id = "topbar";
     document.getElementById("app").insertBefore(bar, document.getElementById("app").firstChild);
   }
-  const idHtml = curTopbarSceneName
-    ? '<span class="pname scene-name">'+escapeHtml(curTopbarSceneName)+'</span>'
-    : playerIcon()+' <span class="pname">'+escapeHtml(playerName())+'</span>';
-  bar.innerHTML = '<div class="id">'+idHtml+'</div>'+
+  const idHtml = playerIcon()+' <span class="pname">'+escapeHtml(playerName())+'</span>';
+  bar.innerHTML = '<div class="id" id="topbar-id" style="cursor:pointer;">'+idHtml+'</div>'+
     '<div class="stats">✦地名學識 <b>'+state.loreScore+'</b> ・ 🎒 <b>'+state.party.length+'</b>/'+Object.keys(COMPANIONS).length+' 夥伴</div>'+
     '<div style="display:flex;gap:6px;">'+
       '<button class="menu-btn" id="topbar-fullscreen" title="全螢幕">'+(isFullscreen()?"🗗":"⛶")+'</button>'+
@@ -3311,10 +3309,31 @@ function renderTopbar(){
       '<button class="menu-btn" id="topbar-save">💾</button>'+
       '<button class="menu-btn" id="topbar-menu" title="回主選單">🏠</button>'+
     '</div>';
+  bar.querySelector("#topbar-id").addEventListener("click", openPlayerInfoModal);
   bar.querySelector("#topbar-save").addEventListener("click", ()=>{ sfx("click"); openSaveModal(); });
   bar.querySelector("#topbar-audio").addEventListener("click", ()=>{ sfx("click"); openAudioModal(); });
   bar.querySelector("#topbar-fullscreen").addEventListener("click", toggleFullscreen);
   bar.querySelector("#topbar-menu").addEventListener("click", backToMainMenu);
+}
+
+// 點左上角玩家姓名：開啟人物資訊、地名學識與同行夥伴總覽
+function openPlayerInfoModal(){
+  sfx("click");
+  const c = curChar();
+  const art = artFor(playerName());
+  const portraitHtml = art ? '<img class="modal-portrait" src="'+art.face+'">' : "";
+  const schoolLine = c && (c.school || c.home) ? '<div class="detail-old">'+escapeHtml(c.school||c.home)+'</div>' : "";
+  const personaLine = c && c.persona ? '<div class="detail-body">'+escapeHtml(c.persona)+'</div>' : "";
+  const blurbLine = c && c.blurb ? '<div class="detail-body">'+escapeHtml(c.blurb)+'</div>' : "";
+  const back = openModal(
+    portraitHtml+
+    '<div class="detail-title">'+playerIcon()+' '+escapeHtml(playerName())+'</div>'+
+    schoolLine+personaLine+blurbLine+
+    '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--paper-line);font-family:var(--serif);">✦ 地名學識 <b>'+state.loreScore+'</b></div>'+
+    '<div class="detail-title" style="font-size:.9rem;margin-top:14px;">🎒 同行夥伴</div>'+
+    '<div id="player-modal-party-row"></div>'
+    , {center:true});
+  renderPartyRow(back.querySelector("#player-modal-party-row"));
 }
 
 // ---------- 自由挑戰區 ----------
