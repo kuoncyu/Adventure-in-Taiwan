@@ -107,10 +107,9 @@ body{
   padding:12px 16px;background:rgba(20,32,31,.85);backdrop-filter:blur(6px);
   border-bottom:1px solid rgba(176,134,63,.35);position:sticky;top:0;z-index:80;
 }
-.topbar .id{display:flex;align-items:center;gap:10px;font-family:var(--serif);}
+.topbar .id{display:flex;align-items:center;gap:10px;font-family:var(--serif);flex:0 0 auto;}
 .topbar .id .pname{font-weight:700;color:var(--gold-lt);}
-.topbar .stats{display:flex;gap:14px;font-size:.78rem;color:var(--mist);}
-.topbar .stats b{color:var(--paper);}
+.topbar .chapter{flex:1 1 auto;min-width:0;text-align:center;font-family:var(--serif);font-size:.8rem;letter-spacing:1px;color:var(--gold-lt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px;}
 .topbar .menu-btn{background:none;border:1px solid var(--mist);color:var(--paper);border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:1rem;}
 
 /* ---------- 標題畫面 ---------- */
@@ -428,10 +427,57 @@ body{
   opacity:.8;
   max-width:280px;
 }
+#screen-enter{
+  position:fixed; inset:0; z-index:10000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:20px; padding:24px; text-align:center;
+  background:
+    radial-gradient(ellipse at 20% -10%, #2c464c 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 110%, #1a3630 0%, transparent 50%),
+    linear-gradient(160deg,#14201f 0%, #0f1817 100%);
+  color:var(--paper);
+  font-family:var(--sans);
+  cursor:pointer;
+}
+#screen-enter .enter-compass{
+  font-size:2.8rem;
+  animation: enter-pulse 1.8s ease-in-out infinite;
+}
+@keyframes enter-pulse{ 0%,100%{transform:scale(1);opacity:.9;} 50%{transform:scale(1.12);opacity:1;} }
+#screen-enter .enter-title{
+  font-family:var(--serif);
+  font-size:1.5rem;
+  letter-spacing:.1em;
+  color:var(--gold-lt);
+}
+#screen-enter .enter-btn{
+  width:min(280px, 82vw);
+  padding:16px 26px;
+  font-size:1.05rem;
+  font-family:var(--serif);
+  letter-spacing:.06em;
+  color:var(--ink);
+  background:linear-gradient(180deg, var(--gold-lt) 0%, var(--gold) 100%);
+  border:1px solid var(--paper-line);
+  border-radius:999px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);
+}
+#screen-enter .enter-hint{
+  font-size:.72rem;
+  color:var(--mist);
+  opacity:.85;
+  max-width:280px;
+}
 
 </style>
 </head>
 <body>
+<div id="screen-enter">
+  <div class="enter-compass">🧭</div>
+  <div class="enter-title">拾憶者物語</div>
+  <button class="enter-btn" id="enter-btn">點擊進入遊戲</button>
+  <div class="enter-hint">將自動開啟背景音樂並切換為全螢幕</div>
+</div>
 <div id="screen-loading">
   <div class="loading-compass">🧭</div>
   <div class="loading-title">拾憶者物語 · 資源載入中</div>
@@ -459,6 +505,9 @@ body{
 
 <!-- ===================== 選角畫面 ===================== -->
 <div class="screen hidden" id="screen-charselect">
+  <div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
+    <button class="brass-btn ghost small" id="cs-exit">🏠 返回主選單</button>
+  </div>
   <div class="cs-step-title" id="cs-title">選擇你的身分</div>
   <div class="cs-step-sub" id="cs-sub"></div>
   <div id="cs-gender-stage">
@@ -2419,6 +2468,25 @@ const Audio_ = {
 });
 function sfx(n){ Audio_.sfx(n); }
 
+// ---------- 進場門：一鍵解鎖音樂＋全螢幕 ----------
+(function(){
+  var enterEl = document.getElementById("screen-enter");
+  var enterBtn = document.getElementById("enter-btn");
+  function doEnter(){
+    if (!enterEl) return;
+    Audio_.unlock();
+    enterFullscreen();
+    enterEl.classList.add("hidden");
+    enterEl.style.display = "none";
+  }
+  if (enterBtn){
+    enterBtn.addEventListener("click", function(e){ e.stopPropagation(); doEnter(); });
+  }
+  if (enterEl){
+    enterEl.addEventListener("click", doEnter);
+  }
+})();
+
 // ---------- 遊戲狀態 ----------
 let state = {
   playerName: "旅人",
@@ -2503,6 +2571,8 @@ function regionStats(region){
 
 // ---------- 畫面切換 ----------
 const screens = ["title","charselect","dialogue","worldmap","region","county","codex","challenge"];
+let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂部狀態列置中位置
+function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
 function setBgmRegion(rid){ curBgmRegion = rid || null; }
 function syncBgm(screenId){
@@ -2516,7 +2586,7 @@ function showScreen(id){
     renderTopbar();
   }
   screens.forEach(s => document.getElementById("screen-"+s).classList.toggle("hidden", s!==id));
-  document.getElementById("bottom-nav").classList.toggle("hidden", id==="title" || id==="dialogue");
+  document.getElementById("bottom-nav").classList.toggle("hidden", id==="title" || id==="dialogue" || id==="charselect");
   document.querySelectorAll("#bottom-nav button").forEach(b=>{
     b.classList.toggle("active", b.dataset.go===id);
   });
@@ -2884,6 +2954,7 @@ function markDiscovered(placeId, isFlagship){
 function startMainQuest(regionId){
   const region = REGIONS.find(r=>r.id===regionId);
   setBgmRegion(regionId);
+  setChapterLabel(region.title);
   const steps = buildMainQuestSteps(region);
   playSequence(steps, () => {
     if (!state.regionDone[regionId]){
@@ -2896,6 +2967,7 @@ function startMainQuest(regionId){
       toast("🎉 已完成「"+region.title+"」");
       renderTopbar();
     }
+    setChapterLabel("");
     renderRegionScreen(regionId);
     showScreen("region");
   });
@@ -2937,8 +3009,10 @@ function playChain(county, kind, idx){
   if (!cc) return;
   const chain = (kind==="main" ? cc.mainChains : cc.sideQuests)[idx];
   if (!chain) return;
+  setChapterLabel(chain.title);
   const steps = buildChainSteps(chain);
   playSequence(steps, () => {
+    setChapterLabel("");
     renderCountyScreen(county);
     showScreen("county");
   });
@@ -2971,7 +3045,7 @@ function startGameIntro(){
   steps[0].scene = "🧭"; steps[0].label = "羅盤甦醒"; steps[0].bg = "school";
   if (steps[4]) steps[4].bg = "oldstreet";
   if (steps[8]) steps[8].bg = REGION_BG[state.homeRegion] || "field";
-  playSequence(steps, () => { state.seenIntro = true; showScreen("worldmap"); renderWorldMap(); renderTopbar(); });
+  playSequence(steps, () => { state.seenIntro = true; setChapterLabel(""); showScreen("worldmap"); renderWorldMap(); renderTopbar(); });
 }
 
 // ---------- 世界地圖 ----------
@@ -3302,7 +3376,7 @@ function renderTopbar(){
   }
   const idHtml = playerIcon()+' <span class="pname">'+escapeHtml(playerName())+'</span>';
   bar.innerHTML = '<div class="id" id="topbar-id" style="cursor:pointer;">'+idHtml+'</div>'+
-    '<div class="stats">✦地名學識 <b>'+state.loreScore+'</b> ・ 🎒 <b>'+state.party.length+'</b>/'+Object.keys(COMPANIONS).length+' 夥伴</div>'+
+    '<div class="chapter" id="topbar-chapter">'+(curChapterLabel?escapeHtml(curChapterLabel):'')+'</div>'+
     '<div style="display:flex;gap:6px;">'+
       '<button class="menu-btn" id="topbar-fullscreen" title="全螢幕">'+(isFullscreen()?"🗗":"⛶")+'</button>'+
       '<button class="menu-btn" id="topbar-audio">🔊</button>'+
@@ -3397,9 +3471,9 @@ document.querySelectorAll("#bottom-nav button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     sfx("click");
     const go = btn.dataset.go;
-    if (go === "worldmap"){ renderWorldMap(); renderTopbar(); showScreen("worldmap"); }
-    else if (go === "codex"){ renderCodex(); renderTopbar(); showScreen("codex"); }
-    else if (go === "challenge"){ renderChallengeScreen(); renderTopbar(); showScreen("challenge"); }
+    if (go === "worldmap"){ setChapterLabel(""); renderWorldMap(); renderTopbar(); showScreen("worldmap"); }
+    else if (go === "codex"){ setChapterLabel(""); renderCodex(); renderTopbar(); showScreen("codex"); }
+    else if (go === "challenge"){ setChapterLabel(""); renderChallengeScreen(); renderTopbar(); showScreen("challenge"); }
     else if (go === "party"){ openModal('<div class="detail-title">🎒 同行夥伴</div><div id="party-modal-row"></div>', {center:true});
       renderPartyRow(document.querySelector("#modal-root .modal-back:last-child #party-modal-row")); }
     else if (go === "save"){ openSaveModal(); }
@@ -3438,6 +3512,7 @@ document.querySelectorAll(".cs-gender-card").forEach(card=>{
 });
 
 document.getElementById("cs-back").addEventListener("click", ()=>{ sfx("click"); openCharSelect(); });
+document.getElementById("cs-exit").addEventListener("click", ()=>{ sfx("click"); showScreen("title"); });
 
 function renderCharGrid(){
   const grid = document.getElementById("cs-grid");
@@ -3595,6 +3670,7 @@ function goToTitleMenu(){
   if (typing){ clearInterval(typing); typing = null; }
   dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
   curSceneBg = null;
+  setChapterLabel("");
   const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
   showScreen("worldmap");
 }
