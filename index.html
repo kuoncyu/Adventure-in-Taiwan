@@ -121,6 +121,7 @@ body{
 .title-sub{color:var(--mist);font-size:.92rem;letter-spacing:2px;margin-bottom:28px;}
 .title-blurb{max-width:480px;font-family:var(--serif);line-height:2;color:#d9cba1;font-size:.94rem;margin-bottom:30px;}
 .title-actions{display:flex;flex-direction:column;gap:12px;align-items:center;}
+.title-actions .brass-btn{width:240px;padding:12px 26px;font-size:1rem;}
 .title-foot{margin-top:36px;font-size:.72rem;color:var(--mist);opacity:.7;}
 
 /* ---------- 對話系統 ---------- */
@@ -3576,14 +3577,14 @@ function goToTitleMenu(){
   dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
   curSceneBg = null;
   const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
-  showScreen("title");
+  showScreen("worldmap");
 }
 function backToMainMenu(){
   sfx("click");
   if (isDialogueActive()){
     const back = openModal(
-      '<div class="detail-title">回到主選單</div>'+
-      '<div class="detail-body">目前劇情尚未播放完畢，返回主選單將會中斷這段對話。建議先點上方 💾 取得存檔代碼，之後可用「讀取存檔代碼」繼續旅程。確定要返回嗎？</div>'+
+      '<div class="detail-title">回到拾憶地圖</div>'+
+      '<div class="detail-body">目前劇情尚未播放完畢，返回拾憶地圖將會中斷這段對話。建議先點上方 💾 取得存檔代碼，之後可用「讀取存檔代碼」繼續旅程。確定要返回嗎？</div>'+
       '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
         '<button class="brass-btn ghost small" id="menu-cancel-btn">取消</button>'+
         '<button class="brass-btn small" id="menu-confirm-btn">確定返回</button>'+
