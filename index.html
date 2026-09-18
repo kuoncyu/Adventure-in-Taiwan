@@ -103,7 +103,7 @@ body{
 
 /* ---------- 頂部狀態列 ---------- */
 .topbar{
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:6px;
   padding:12px 16px;background:rgba(20,32,31,.85);backdrop-filter:blur(6px);
   border-bottom:1px solid rgba(176,134,63,.35);position:sticky;top:0;z-index:80;
 }
@@ -3305,11 +3305,15 @@ function renderTopbar(){
   bar.innerHTML = '<div class="id">'+idHtml+'</div>'+
     '<div class="stats">✦地名學識 <b>'+state.loreScore+'</b> ・ 🎒 <b>'+state.party.length+'</b>/'+Object.keys(COMPANIONS).length+' 夥伴</div>'+
     '<div style="display:flex;gap:6px;">'+
+      '<button class="menu-btn" id="topbar-fullscreen" title="全螢幕">'+(isFullscreen()?"🗗":"⛶")+'</button>'+
       '<button class="menu-btn" id="topbar-audio">🔊</button>'+
       '<button class="menu-btn" id="topbar-save">💾</button>'+
+      '<button class="menu-btn" id="topbar-menu" title="回主選單">🏠</button>'+
     '</div>';
   bar.querySelector("#topbar-save").addEventListener("click", ()=>{ sfx("click"); openSaveModal(); });
   bar.querySelector("#topbar-audio").addEventListener("click", ()=>{ sfx("click"); openAudioModal(); });
+  bar.querySelector("#topbar-fullscreen").addEventListener("click", toggleFullscreen);
+  bar.querySelector("#topbar-menu").addEventListener("click", backToMainMenu);
 }
 
 // ---------- 自由挑戰區 ----------
@@ -3471,6 +3475,7 @@ document.getElementById("cs-confirm").addEventListener("click", ()=>{
 
 document.getElementById("btn-start-new").addEventListener("click", ()=>{
   sfx("click");
+  enterFullscreen();
   openCharSelect();          // 名字直接沿用所選角色，不再另外取名
 });
 
@@ -3516,10 +3521,80 @@ document.getElementById("btn-load-save").addEventListener("click", ()=>{
     const code = back.querySelector("#load-code-area").value;
     if (loadSaveCode(code)){
       back.remove(); toast("存檔已讀取，歡迎回來，"+state.playerName);
+      enterFullscreen();
       renderTopbar(); renderWorldMap(); showScreen("worldmap");
     } else { toast("讀取失敗，請確認代碼是否正確"); }
   });
 });
+
+// ---------- 全螢幕 ----------
+function isFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function enterFullscreen(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (!req) return;
+  try{
+    const p = req.call(el);
+    if (p && p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+function exitFullscreen(){
+  const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (!ex) return;
+  try{
+    const p = ex.call(document);
+    if (p && p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+function toggleFullscreen(){
+  sfx("click");
+  if (isFullscreen()){ exitFullscreen(); return; }
+  const el = document.documentElement;
+  if (!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)){
+    toast("此瀏覽器不支援全螢幕功能");
+    return;
+  }
+  enterFullscreen();
+}
+function syncFullscreenBtn(){
+  const btn = document.getElementById("topbar-fullscreen");
+  if (btn) btn.textContent = isFullscreen() ? "🗗" : "⛶";
+}
+["fullscreenchange","webkitfullscreenchange","msfullscreenchange"].forEach(evt=>{
+  document.addEventListener(evt, syncFullscreenBtn);
+});
+
+// ---------- 回主選單 ----------
+function isDialogueActive(){
+  const el = document.getElementById("screen-dialogue");
+  return !!el && !el.classList.contains("hidden");
+}
+function goToTitleMenu(){
+  if (typing){ clearInterval(typing); typing = null; }
+  dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
+  curSceneBg = null;
+  const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
+  showScreen("title");
+}
+function backToMainMenu(){
+  sfx("click");
+  if (isDialogueActive()){
+    const back = openModal(
+      '<div class="detail-title">回到主選單</div>'+
+      '<div class="detail-body">目前劇情尚未播放完畢，返回主選單將會中斷這段對話。建議先點上方 💾 取得存檔代碼，之後可用「讀取存檔代碼」繼續旅程。確定要返回嗎？</div>'+
+      '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
+        '<button class="brass-btn ghost small" id="menu-cancel-btn">取消</button>'+
+        '<button class="brass-btn small" id="menu-confirm-btn">確定返回</button>'+
+      '</div>'
+      , {center:true});
+    back.querySelector("#menu-cancel-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
+    back.querySelector("#menu-confirm-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); goToTitleMenu(); });
+  } else {
+    goToTitleMenu();
+  }
+}
 
 showScreen("title");
 })();
