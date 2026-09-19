@@ -2753,6 +2753,11 @@ function buildStopSteps(stop, region, ctx){
 function buildMainQuestSteps(region){
   let steps = [];
   const first = isFirstRegion(region.id), last = isLastRegion(region.id);
+  // 柯世安固定在「旅程的第一區」一開場就先入隊（早於該區任何一站的劇情），
+  // 這樣他在該區本身站點、以及後續其他區域裡的台詞才能正常銜接、不會被跳過。
+  // 他「正式登場、自我介紹」的台詞（JOURNEY.firstClosing）則保留在該區結尾，
+  // 因為那段台詞裡會提到「你們剛剛講的那幾個地名由來」，需要接在該區站點之後才合理。
+  if (first && state.party.indexOf("keshian")===-1) state.party.push("keshian");
   // 開場：旅程起點／終點的框架台詞 + 該區本身的介紹（未入隊夥伴不發言）
   let openLines = [];
   if (first) openLines = openLines.concat(JOURNEY.firstOpening(region));
@@ -2765,7 +2770,7 @@ function buildMainQuestSteps(region){
   steps.push(pline("greet"));
   const ctx = {bg: regionBg};
   region.stops.forEach(stop => { steps = steps.concat(buildStopSteps(stop, region, ctx)); });
-  // 結尾：該區夥伴入隊 →（第一區）柯世安登場 →（最後一區）全隊大結局
+  // 結尾：該區夥伴入隊 →（第一區）柯世安正式登場自我介紹 →（最後一區）全隊大結局
   let closeLines = filterCastLines(region.closing, region);
   if (first) closeLines = closeLines.concat(JOURNEY.firstClosing);
   if (last)  closeLines = closeLines.concat(JOURNEY.lastClosing);
@@ -2966,8 +2971,7 @@ function startMainQuest(regionId){
     if (!state.regionDone[regionId]){
       state.regionDone[regionId] = true;
       if (region.companion && state.party.indexOf(region.companion)===-1) state.party.push(region.companion);
-      // 柯世安固定在「旅程的第一區」結束時登場入隊，不綁定特定區域
-      if (isFirstRegion(regionId) && state.party.indexOf("keshian")===-1) state.party.push("keshian");
+      // 柯世安已改為在「旅程第一區」一開場（buildMainQuestSteps）就入隊，這裡不再重複處理
       if (region.extraCompanion && state.party.indexOf(region.extraCompanion)===-1) state.party.push(region.extraCompanion);
       sfx("complete");
       toast("🎉 已完成「"+region.title+"」");
