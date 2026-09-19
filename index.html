@@ -140,7 +140,6 @@ body{
 .stage-portrait{max-width:88%;max-height:340px;border-radius:14px;box-shadow:0 14px 30px rgba(0,0,0,.5);border:1px solid rgba(176,134,63,.5);animation:portraitIn .35s ease;object-fit:cover;}
 @keyframes portraitIn{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
 .dlg-speaker .sp-face{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px;border:1px solid var(--seal);}
-.dlg-stage .dlg-scene-label{position:absolute!important;top:14px;left:50%;right:auto;transform:translateX(-50%);z-index:3;text-align:center;font-family:var(--serif);color:var(--gold-lt);font-size:.85rem;letter-spacing:3px;background:rgba(12,9,6,.45);padding:4px 16px;border-radius:20px;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;}
 .dlg-box-wrap{padding:0 14px 18px;}
 .dlg-box{
   padding:16px 18px 18px;min-height:118px;
@@ -176,6 +175,9 @@ body{
   color:#2f5c3c;background:#eef6ec;border-color:#8fae8a;
 }
 .dlg-box.player .dlg-text{color:#22321f;}
+
+/* ---------- 旁白：不顯示發言者標籤，避免突兀 ---------- */
+.dlg-box.narration .dlg-speaker{display:none;}
 
 /* ---------- 選角畫面 ---------- */
 #screen-charselect{padding:20px 16px 90px;}
@@ -532,8 +534,7 @@ body{
 <div class="screen hidden" id="screen-dialogue">
   <div class="dlg-stage">
     <div class="dlg-scene-bg" id="dlg-scene-bg"></div>
-    <div class="dlg-scene-label" id="dlg-scene-label"></div>
-    <div class="scene-emoji" id="dlg-scene-emoji">🌫️</div>
+    <div class="scene-emoji" id="dlg-scene-emoji"></div>
   </div>
   <div class="dlg-box-wrap">
     <div class="paper-panel dlg-box" id="dlg-box">
@@ -2677,7 +2678,6 @@ function sceneNarration(id, seed){
   const f = sb.flavor[(seed||0) % sb.flavor.length];
   return {type:"line", speaker:"旁白", text:f, bg:id};
 }
-const dlgSceneLabelEl = () => document.getElementById("dlg-scene-label");
 const dlgTapHintEl = () => document.getElementById("dlg-tap-hint");
 const dlgBoxEl = () => document.getElementById("dlg-box");
 
@@ -2805,7 +2805,7 @@ function nextDlgStep(){
   if (step.bg !== undefined) setSceneBg(step.bg);
   if (step.scene){ dlgCurScene = step.scene; }
   if (step.label){ dlgCurLabel = step.label; }
-  dlgSceneLabelEl().textContent = dlgCurLabel;
+  // 場景上的重複篇章標題徽章已移除，篇章標題僅顯示於頂部列(topbar-chapter)
   updateStageVisual(step.type==="line" ? step.speaker : (step.type==="quiz" ? step.npcName : null));
 
   if (step.type === "line"){
@@ -2826,16 +2826,19 @@ function updateStageVisual(speakerName){
     stage.innerHTML = "";
     stage.textContent = playerIcon();
   } else {
+    // 背景已有場景插畫，旁白時不再疊加裝飾用表情符號圖示
     stage.innerHTML = "";
-    stage.textContent = dlgCurScene;
+    stage.textContent = "";
   }
 }
 
 function renderTyping(speaker, icon, text){
   const art = artFor(speaker);
   const mine = isPlayerSpeaker(speaker);
+  const isNarration = (speaker === "旁白");
   dlgBoxEl().classList.toggle("player", !!mine);
-  dlgSpeakerEl().innerHTML = (art ? '<img class="sp-face" src="'+art.face+'">' : (icon?icon+" ":"")) + escapeHtml(speaker);
+  dlgBoxEl().classList.toggle("narration", isNarration);
+  dlgSpeakerEl().innerHTML = isNarration ? "" : ((art ? '<img class="sp-face" src="'+art.face+'">' : (icon?icon+" ":"")) + escapeHtml(speaker));
   const el = dlgTextEl();
   el.textContent = "";
   dlgTapHintEl().style.visibility = "hidden";
