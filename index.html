@@ -650,11 +650,13 @@ const CHARACTER_ART = {};
         var items = manifest.items;
         for (var i = 0; i < items.length; i++){
           var it = items[i];
-          var slice = buffer.slice(it.offset, it.offset + it.length);
-          var blob = new Blob([slice], { type: it.mime || "image/webp" });
-          var url = URL.createObjectURL(blob);
-          if (!CHARACTER_ART[it.key]) CHARACTER_ART[it.key] = {};
-          CHARACTER_ART[it.key][it.part] = url;
+          try{
+            var slice = buffer.slice(it.offset, it.offset + it.length);
+            var blob = new Blob([slice], { type: it.mime || "image/webp" });
+            var url = URL.createObjectURL(blob);
+            if (!CHARACTER_ART[it.key]) CHARACTER_ART[it.key] = {};
+            CHARACTER_ART[it.key][it.part] = url;
+          }catch(e){ /* 單一項目壞掉時跳過，不中斷其餘角色圖的載入 */ }
         }
       }
     },
@@ -666,12 +668,14 @@ const CHARACTER_ART = {};
         var items = manifest.items;
         for (var i = 0; i < items.length; i++){
           var it = items[i];
-          var slice = buffer.slice(it.offset, it.offset + it.length);
-          var blob = new Blob([slice], { type: it.mime || "image/webp" });
-          var url = URL.createObjectURL(blob);
-          if (typeof SCENE_BG !== "undefined" && SCENE_BG[it.key]){
-            SCENE_BG[it.key].photoUrl = url;
-          }
+          try{
+            var slice = buffer.slice(it.offset, it.offset + it.length);
+            var blob = new Blob([slice], { type: it.mime || "image/webp" });
+            var url = URL.createObjectURL(blob);
+            if (typeof SCENE_BG !== "undefined" && SCENE_BG[it.key]){
+              SCENE_BG[it.key].photoUrl = url;
+            }
+          }catch(e){ /* 單一場景圖壞掉時跳過，不中斷其餘場景圖的載入 */ }
         }
       }
     }
@@ -774,78 +778,103 @@ const CHARACTER_ART = {};
     statusEl = q("loading-status");
 
     openDB().then(function(db){
-      // 先檢查每個資源包是否已經存在本機快取
-      var cacheChecks = PACKS.map(function(p){
-        return Promise.all([idbGet(db, p.name + ":manifest"), idbGet(db, p.name + ":pack")]);
+      // 先向伺服器抓每個資源包最新的 manifest（檔案很小，一定重新抓，
+      // 用來跟本機 IndexedDB 快取的版本比對，避免資源包更新後
+      // 瀏覽器還在用舊的、甚至是下載到一半就存進去的壞快取）
+      var freshManifests = PACKS.map(function(p){
+        return fetch(p.manifestUrl, {cache:"no-store"}).then(function(r){
+          if (!r.ok) throw new Error(p.name + " manifest HTTP " + r.status);
+          return r.json();
+        }).then(function(manifest){ return { pack: p, manifest: manifest }; })
+          .catch(function(){ return { pack: p, manifest: null }; }); // 抓不到就當作沒有最新資訊，稍後仍會嘗試用快取或重新下載
       });
 
-      Promise.all(cacheChecks).then(function(results){
-        var pending = [];
-        var cachedCount = 0;
-        for (var i = 0; i < PACKS.length; i++){
-          var manifest = results[i][0], buffer = results[i][1];
-          if (manifest && buffer){
-            try{
-              PACKS[i].apply(manifest, buffer);
-              cachedCount++;
-              continue;
-            }catch(e){ /* 快取壞掉，重新下載 */ }
-          }
-          pending.push(PACKS[i]);
-        }
+      Promise.all(freshManifests).then(function(withFresh){
+        var cacheChecks = withFresh.map(function(wf){
+          return Promise.all([idbGet(db, wf.pack.name + ":manifest"), idbGet(db, wf.pack.name + ":pack")])
+            .then(function(cached){ return { wf: wf, cachedManifest: cached[0], cachedBuffer: cached[1] }; });
+        });
 
-        if (pending.length === 0){
-          setProgress(1, "從本機讀取完成");
-          finish();
-          return;
-        }
-
-        setProgress(0, "首次遊玩，正在下載圖檔資源包…");
-
-        // 先抓每個待下載資源包的 manifest，取得各自的總位元組數，以便算出合併進度
-        Promise.all(pending.map(function(p){
-          return fetch(p.manifestUrl).then(function(r){
-            if (!r.ok) throw new Error(p.name + " manifest HTTP " + r.status);
-            return r.json();
-          }).then(function(manifest){ return { pack: p, manifest: manifest }; });
-        })).then(function(withManifests){
-          var totalBytes = 0;
-          withManifests.forEach(function(wm){ totalBytes += (wm.manifest.totalBytes || 0); });
-          var totalReceived = 0;
-          var receivedByPack = {};
-
-          function overallProgress(){
-            var sum = 0;
-            for (var k in receivedByPack) sum += receivedByPack[k];
-            return totalBytes ? (sum / totalBytes) : 0;
+        return Promise.all(cacheChecks).then(function(results){
+          var pending = [];
+          for (var i = 0; i < results.length; i++){
+            var r = results[i];
+            var fresh = r.wf.manifest;         // 這次向伺服器抓到的最新 manifest（可能為 null＝抓取失敗）
+            var cm = r.cachedManifest, cb = r.cachedBuffer;
+            var cacheValid = false;
+            if (cm && cb){
+              if (fresh){
+                // 有抓到最新 manifest：比對內容是否完全一致，且快取的位元組數也對得上，才信任快取
+                cacheValid = (JSON.stringify(cm) === JSON.stringify(fresh)) &&
+                             cb.byteLength === (fresh.totalBytes || 0);
+              } else {
+                // 連最新 manifest 都抓不到（例如離線），退而求其次，只要快取本身內部一致就先用
+                cacheValid = cb.byteLength === (cm.totalBytes || 0);
+              }
+            }
+            if (cacheValid){
+              try{
+                r.wf.pack.apply(cm, cb);
+                continue;
+              }catch(e){ /* 快取套用失敗，當作沒有快取，重新下載 */ }
+            }
+            // 快取不存在、對不上、或套用失敗 → 標記為待下載，優先使用剛剛抓到的最新 manifest
+            pending.push({ pack: r.wf.pack, manifest: fresh });
           }
 
-          var downloads = withManifests.map(function(wm){
-            receivedByPack[wm.pack.name] = 0;
-            return fetchPackWithProgress(wm.pack.packUrl, function(bytes){
-              receivedByPack[wm.pack.name] = bytes;
-              setProgress(overallProgress(), "下載圖檔資源包… (" + Math.round(overallProgress()*100) + "%)");
-            }).then(function(buffer){
-              return { pack: wm.pack, manifest: wm.manifest, buffer: buffer };
-            });
-          });
+          if (pending.length === 0){
+            setProgress(1, "從本機讀取完成");
+            finish();
+            return;
+          }
 
-          return Promise.all(downloads);
-        }).then(function(loaded){
-          loaded.forEach(function(item){
-            item.pack.apply(item.manifest, item.buffer);
-          });
-          setProgress(1, "下載完成，儲存到本機…");
-          return Promise.all(loaded.map(function(item){
-            return idbSet(db, item.pack.name + ":manifest", item.manifest).then(function(){
-              return idbSet(db, item.pack.name + ":pack", item.buffer);
+          setProgress(0, "正在下載圖檔資源包…");
+
+          // 待下載的項目裡，若剛剛沒抓到 manifest（fresh 為 null），這裡再補抓一次
+          Promise.all(pending.map(function(p){
+            if (p.manifest) return p;
+            return fetch(p.pack.manifestUrl, {cache:"no-store"}).then(function(r){
+              if (!r.ok) throw new Error(p.pack.name + " manifest HTTP " + r.status);
+              return r.json();
+            }).then(function(manifest){ p.manifest = manifest; return p; });
+          })).then(function(withManifests){
+            var totalBytes = 0;
+            withManifests.forEach(function(wm){ totalBytes += (wm.manifest.totalBytes || 0); });
+            var receivedByPack = {};
+
+            function overallProgress(){
+              var sum = 0;
+              for (var k in receivedByPack) sum += receivedByPack[k];
+              return totalBytes ? (sum / totalBytes) : 0;
+            }
+
+            var downloads = withManifests.map(function(wm){
+              receivedByPack[wm.pack.name] = 0;
+              return fetchPackWithProgress(wm.pack.packUrl, function(bytes){
+                receivedByPack[wm.pack.name] = bytes;
+                setProgress(overallProgress(), "下載圖檔資源包… (" + Math.round(overallProgress()*100) + "%)");
+              }).then(function(buffer){
+                return { pack: wm.pack, manifest: wm.manifest, buffer: buffer };
+              });
             });
-          }));
-        }).then(function(){
-          finish();
-        }).catch(function(err){
+
+            return Promise.all(downloads);
+          }).then(function(loaded){
+            loaded.forEach(function(item){
+              item.pack.apply(item.manifest, item.buffer);
+            });
+            setProgress(1, "下載完成，儲存到本機…");
+            return Promise.all(loaded.map(function(item){
+              return idbSet(db, item.pack.name + ":manifest", item.manifest).then(function(){
+                return idbSet(db, item.pack.name + ":pack", item.buffer);
+              });
+            }));
+          }).then(function(){
+            finish();
+          }).catch(function(err){
           if (statusEl) statusEl.textContent = "資源包載入失敗，將以簡易模式繼續遊戲（" + err.message + "）";
           setTimeout(finish, 1200);
+        });
         });
       });
     });
@@ -3742,7 +3771,7 @@ document.getElementById("btn-about").addEventListener("click", ()=>{
     '<div class="detail-title">關於</div>'+
     '<div style="margin-top:10px;font-size:.8rem;line-height:1.9;color:var(--ink-text);text-align:left;">'+
       '<div>遊戲製作設計：郭柏宏</div>'+
-      '<div>版本號：20260919</div>'+
+      '<div>版本號：20260917</div>'+
       '<div style="margin-top:6px;">致謝詞：感謝《台灣地名尋根》資料庫提供珍貴史料，以及所有給予意見與測試協助的朋友，讓這574則地名記憶得以化作旅程，被玩家一一拾起。</div>'+
     '</div>'
     , {center:true});
