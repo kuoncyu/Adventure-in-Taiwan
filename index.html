@@ -738,7 +738,7 @@ const CHARACTER_ART = {};
   }
 
   function fetchPackWithProgress(url, onBytes){
-    return fetch(url).then(function(res){
+    return fetch(url, {cache:"no-store"}).then(function(res){
       if (!res.ok) throw new Error("HTTP " + res.status);
       if (!res.body || !res.body.getReader) {
         return res.arrayBuffer().then(function(buf){
@@ -856,7 +856,10 @@ const CHARACTER_ART = {};
 
             var downloads = withManifests.map(function(wm){
               receivedByPack[wm.pack.name] = 0;
-              return fetchPackWithProgress(wm.pack.packUrl, function(bytes){
+              // 用 manifest 的總位元組數當作 cache-busting 版本號附加在網址後面，
+              // 避免有些中間層快取（CDN、瀏覽器）忽略 no-store 而回傳舊的 .pack 內容
+              var bustedUrl = wm.pack.packUrl + "?v=" + (wm.manifest.totalBytes || 0) + "-" + ((wm.manifest.items||[]).length);
+              return fetchPackWithProgress(bustedUrl, function(bytes){
                 receivedByPack[wm.pack.name] = bytes;
                 setProgress(overallProgress(), "下載圖檔資源包… (" + Math.round(overallProgress()*100) + "%)");
               }).then(function(buffer){
