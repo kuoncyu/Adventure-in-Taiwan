@@ -491,8 +491,8 @@ body{
   <div class="loading-title">拾憶者物語 · 資源載入中</div>
   <div class="loading-bar-track"><div class="loading-bar-fill" id="loading-bar-fill"></div></div>
   <div class="loading-pct" id="loading-pct">0%</div>
-  <div class="loading-status" id="loading-status">正在準備圖檔與背景音樂資源…</div>
-  <div class="loading-hint">第一次遊玩需要下載角色圖檔與全部背景音樂，下載完成後會存在瀏覽器本機，之後開啟就不用再等待。</div>
+  <div class="loading-status" id="loading-status">正在準備角色圖檔資源包…</div>
+  <div class="loading-hint">第一次遊玩需要下載角色圖檔，下載完成後會存在瀏覽器本機，之後開啟就不用再等待。</div>
 </div>
 
 <div class="app" id="app">
@@ -777,183 +777,116 @@ const CHARACTER_ART = {};
     }
   }
 
-  // ---- 背景音樂：預先在載入畫面就把全部曲目下載並快取進本機 ----
-  // （BGM_FILES / BGM_FOLDER 是稍後在同一份 <script> 裡才宣告的 const，
-  //   但這個函式要等 DOMContentLoaded 才會被呼叫，那時整份 script 早已
-  //   執行完畢、這兩個 const 也已經賦值完成，所以這裡可以安全地使用。）
-  function getBgmTracks(){
-    var keys = Object.keys(BGM_FILES);
-    return keys.map(function(key){
-      return { key: key, url: BGM_FOLDER + BGM_FILES[key] };
-    });
-  }
-
   function init(){
     loadingEl = q("screen-loading");
     barEl = q("loading-bar-fill");
     pctEl = q("loading-pct");
     statusEl = q("loading-status");
 
-    // 安全機制：不管什麼原因卡住，最多等 45 秒就直接放行進遊戲，
-    // 避免玩家被卡在載入畫面出不去（之後仍會用原本的隨選下載機制補齊）。
-    var settled = false;
-    var watchdog = setTimeout(function(){
-      if (settled) return;
-      settled = true;
-      console.warn("[loading] 逾時，改為直接進入遊戲");
-      if (statusEl) statusEl.textContent = "載入時間過長，先以目前資源繼續遊戲…";
-      setTimeout(finish, 600);
-    }, 45000);
-    function done(){
-      if (settled) return;
-      settled = true;
-      clearTimeout(watchdog);
-      finish();
-    }
-    function fail(err){
-      if (settled) return;
-      settled = true;
-      clearTimeout(watchdog);
-      console.error("[loading] 載入失敗", err);
-      if (statusEl) statusEl.textContent = "資源載入失敗，將以簡易模式繼續遊戲（" + ((err && err.message) || err) + "）";
-      setTimeout(finish, 1200);
-    }
-
-    var imageDb, bgmDb;
-
-    Promise.all([openDB(), bgmOpenDB()]).then(function(dbs){
-      imageDb = dbs[0]; bgmDb = dbs[1];
-
-      // ===== 1. 圖檔資源包：照原本邏輯，比對 manifest + 位元組數決定是否要重下載 =====
+    openDB().then(function(db){
+      // 先向伺服器抓每個資源包最新的 manifest（檔案很小，一定重新抓，
+      // 用來跟本機 IndexedDB 快取的版本比對，避免資源包更新後
+      // 瀏覽器還在用舊的、甚至是下載到一半就存進去的壞快取）
       var freshManifests = PACKS.map(function(p){
         return fetch(p.manifestUrl, {cache:"no-store"}).then(function(r){
           if (!r.ok) throw new Error(p.name + " manifest HTTP " + r.status);
           return r.json();
         }).then(function(manifest){ return { pack: p, manifest: manifest }; })
-          .catch(function(){ return { pack: p, manifest: null }; });
+          .catch(function(){ return { pack: p, manifest: null }; }); // 抓不到就當作沒有最新資訊，稍後仍會嘗試用快取或重新下載
       });
 
-      return Promise.all(freshManifests).then(function(withFresh){
-        var packChecks = withFresh.map(function(wf){
-          return Promise.all([idbGet(imageDb, wf.pack.name + ":manifest"), idbGet(imageDb, wf.pack.name + ":pack")])
+      Promise.all(freshManifests).then(function(withFresh){
+        var cacheChecks = withFresh.map(function(wf){
+          return Promise.all([idbGet(db, wf.pack.name + ":manifest"), idbGet(db, wf.pack.name + ":pack")])
             .then(function(cached){ return { wf: wf, cachedManifest: cached[0], cachedBuffer: cached[1] }; });
         });
 
-        // ===== 2. 背景音樂：只看 IndexedDB 裡有沒有快取，沒有才下載 =====
-        var bgmTracks = getBgmTracks();
-        var bgmChecks = bgmTracks.map(function(t){
-          return idbGet(bgmDb, t.key).then(function(cachedBlob){ return { track: t, cachedBlob: cachedBlob }; });
-        });
-
-        return Promise.all([Promise.all(packChecks), Promise.all(bgmChecks)]).then(function(results){
-          var packResults = results[0], bgmResults = results[1];
-
-          var pendingPacks = [];
-          packResults.forEach(function(r){
-            var fresh = r.wf.manifest, cm = r.cachedManifest, cb = r.cachedBuffer;
+        return Promise.all(cacheChecks).then(function(results){
+          var pending = [];
+          for (var i = 0; i < results.length; i++){
+            var r = results[i];
+            var fresh = r.wf.manifest;         // 這次向伺服器抓到的最新 manifest（可能為 null＝抓取失敗）
+            var cm = r.cachedManifest, cb = r.cachedBuffer;
             var cacheValid = false;
             if (cm && cb){
               if (fresh){
+                // 有抓到最新 manifest：比對內容是否完全一致，且快取的位元組數也對得上，才信任快取
                 cacheValid = (JSON.stringify(cm) === JSON.stringify(fresh)) &&
                              cb.byteLength === (fresh.totalBytes || 0);
               } else {
+                // 連最新 manifest 都抓不到（例如離線），退而求其次，只要快取本身內部一致就先用
                 cacheValid = cb.byteLength === (cm.totalBytes || 0);
               }
             }
             if (cacheValid){
-              try{ r.wf.pack.apply(cm, cb); return; }
-              catch(e){ /* 套用失敗，當作沒有快取，重新下載 */ }
+              try{
+                r.wf.pack.apply(cm, cb);
+                continue;
+              }catch(e){ /* 快取套用失敗，當作沒有快取，重新下載 */ }
             }
-            pendingPacks.push({ pack: r.wf.pack, manifest: fresh });
-          });
+            // 快取不存在、對不上、或套用失敗 → 標記為待下載，優先使用剛剛抓到的最新 manifest
+            pending.push({ pack: r.wf.pack, manifest: fresh });
+          }
 
-          var pendingBgm = [];
-          bgmResults.forEach(function(br){
-            if (!br.cachedBlob){ pendingBgm.push(br.track); }
-          });
-
-          if (pendingPacks.length === 0 && pendingBgm.length === 0){
+          if (pending.length === 0){
             setProgress(1, "從本機讀取完成");
-            done();
+            finish();
             return;
           }
 
-          setProgress(0, "正在下載圖檔與背景音樂…");
+          setProgress(0, "正在下載圖檔資源包…");
 
-          // 圖檔部分：若剛剛沒抓到 manifest，這裡再補抓一次
-          var packManifestsReady = Promise.all(pendingPacks.map(function(p){
+          // 待下載的項目裡，若剛剛沒抓到 manifest（fresh 為 null），這裡再補抓一次
+          Promise.all(pending.map(function(p){
             if (p.manifest) return p;
             return fetch(p.pack.manifestUrl, {cache:"no-store"}).then(function(r){
               if (!r.ok) throw new Error(p.pack.name + " manifest HTTP " + r.status);
               return r.json();
             }).then(function(manifest){ p.manifest = manifest; return p; });
-          }));
-
-          return packManifestsReady.then(function(withManifests){
+          })).then(function(withManifests){
             var totalBytes = 0;
             withManifests.forEach(function(wm){ totalBytes += (wm.manifest.totalBytes || 0); });
-            // 音樂檔案大小沒有事先問伺服器，用平均約 4.3MB 概估，
-            // 只影響進度條百分比好不好看，不影響實際下載內容。
-            var AVG_BGM_BYTES = 4300000;
-            totalBytes += pendingBgm.length * AVG_BGM_BYTES;
+            var receivedByPack = {};
 
-            var receivedByItem = {};
             function overallProgress(){
               var sum = 0;
-              for (var k in receivedByItem) sum += receivedByItem[k];
-              return totalBytes ? Math.min(1, sum / totalBytes) : 0;
-            }
-            function bump(label){
-              setProgress(overallProgress(), label + "… (" + Math.round(overallProgress()*100) + "%)");
+              for (var k in receivedByPack) sum += receivedByPack[k];
+              return totalBytes ? (sum / totalBytes) : 0;
             }
 
-            var packDownloads = withManifests.map(function(wm){
-              receivedByItem["pack:" + wm.pack.name] = 0;
+            var downloads = withManifests.map(function(wm){
+              receivedByPack[wm.pack.name] = 0;
+              // 用 manifest 的總位元組數當作 cache-busting 版本號附加在網址後面，
+              // 避免有些中間層快取（CDN、瀏覽器）忽略 no-store 而回傳舊的 .pack 內容
               var bustedUrl = wm.pack.packUrl + "?v=" + (wm.manifest.totalBytes || 0) + "-" + ((wm.manifest.items||[]).length);
               return fetchPackWithProgress(bustedUrl, function(bytes){
-                receivedByItem["pack:" + wm.pack.name] = bytes;
-                bump("下載圖檔資源包");
+                receivedByPack[wm.pack.name] = bytes;
+                setProgress(overallProgress(), "下載圖檔資源包… (" + Math.round(overallProgress()*100) + "%)");
               }).then(function(buffer){
-                return { type: "pack", pack: wm.pack, manifest: wm.manifest, buffer: buffer };
+                return { pack: wm.pack, manifest: wm.manifest, buffer: buffer };
               });
             });
 
-            var bgmDownloads = pendingBgm.map(function(t){
-              receivedByItem["bgm:" + t.key] = 0;
-              return fetchPackWithProgress(t.url, function(bytes){
-                receivedByItem["bgm:" + t.key] = bytes;
-                bump("下載背景音樂");
-              }).then(function(buffer){
-                return { type: "bgm", track: t, buffer: buffer };
-              });
-            });
-
-            return Promise.all(packDownloads.concat(bgmDownloads));
+            return Promise.all(downloads);
           }).then(function(loaded){
-            var packItems = loaded.filter(function(x){ return x.type === "pack"; });
-            var bgmItems = loaded.filter(function(x){ return x.type === "bgm"; });
-
-            packItems.forEach(function(item){ item.pack.apply(item.manifest, item.buffer); });
-
+            loaded.forEach(function(item){
+              item.pack.apply(item.manifest, item.buffer);
+            });
             setProgress(1, "下載完成，儲存到本機…");
-
-            var savePacks = packItems.map(function(item){
-              return idbSet(imageDb, item.pack.name + ":manifest", item.manifest).then(function(){
-                return idbSet(imageDb, item.pack.name + ":pack", item.buffer);
+            return Promise.all(loaded.map(function(item){
+              return idbSet(db, item.pack.name + ":manifest", item.manifest).then(function(){
+                return idbSet(db, item.pack.name + ":pack", item.buffer);
               });
-            });
-            var saveBgm = bgmItems.map(function(item){
-              var blob = new Blob([item.buffer], { type: "audio/mpeg" });
-              return bgmIdbSet(bgmDb, item.track.key, blob);
-            });
-
-            return Promise.all(savePacks.concat(saveBgm));
+            }));
           }).then(function(){
-            done();
-          });
+            finish();
+          }).catch(function(err){
+          if (statusEl) statusEl.textContent = "資源包載入失敗，將以簡易模式繼續遊戲（" + err.message + "）";
+          setTimeout(finish, 1200);
+        });
         });
       });
-    }).catch(fail);
+    });
   }
 
   if (document.readyState === "loading"){
@@ -2454,64 +2387,19 @@ const BGM_FILES = {
 };
 const BGM_FOLDER = "";   // 若把音樂放在子資料夾，改成 "audio/" 即可
 
-/* ===== 背景音樂本機快取 (IndexedDB) =====
-   目的：mp3 檔第一次用到時才下載，下載完直接存進瀏覽器的 IndexedDB，
-   之後（包含下次開啟遊戲）改用本機存好的檔案播放，不用再重新下載。 */
-const BGM_DB_NAME = "bgm-cache";
-const BGM_DB_VERSION = 1;
-const BGM_STORE_NAME = "tracks";
-
-function bgmOpenDB(){
-  return new Promise(function(resolve){
-    if (!("indexedDB" in window)) { resolve(null); return; }
-    var req;
-    try { req = indexedDB.open(BGM_DB_NAME, BGM_DB_VERSION); }
-    catch(e){ resolve(null); return; }
-    req.onupgradeneeded = function(){
-      try { req.result.createObjectStore(BGM_STORE_NAME); } catch(e){}
-    };
-    req.onsuccess = function(){ resolve(req.result); };
-    req.onerror = function(){ resolve(null); };
-  });
-}
-function bgmIdbGet(db, key){
-  return new Promise(function(resolve){
-    if (!db) { resolve(undefined); return; }
-    try{
-      var tx = db.transaction(BGM_STORE_NAME, "readonly");
-      var req = tx.objectStore(BGM_STORE_NAME).get(key);
-      req.onsuccess = function(){ resolve(req.result); };
-      req.onerror = function(){ resolve(undefined); };
-    }catch(e){ resolve(undefined); }
-  });
-}
-function bgmIdbSet(db, key, val){
-  return new Promise(function(resolve){
-    if (!db) { resolve(false); return; }
-    try{
-      var tx = db.transaction(BGM_STORE_NAME, "readwrite");
-      tx.objectStore(BGM_STORE_NAME).put(val, key);
-      tx.oncomplete = function(){ resolve(true); };
-      tx.onerror = function(){ resolve(false); };
-    }catch(e){ resolve(false); }
-  });
-}
-
 const Audio_ = {
   enabled: true,
   bgmVol: 0.45,
   sfxVol: 0.55,
   cur: null,          // 目前播放的 key
   els: {},            // key -> HTMLAudioElement
-  srcReady: {},        // key -> Promise<可播放網址>（本機快取或剛下載完成的 blob URL）
   unlocked: false,
   ctx: null,
-  fadeOutTimer: null,
-  fadeInTimer: null,
+  fadeTimer: null,
 
   el(key){
     if (!this.els[key]){
-      const a = new Audio();
+      const a = new Audio(BGM_FOLDER + BGM_FILES[key]);
       a.loop = true; a.preload = "none"; a.volume = 0;
       a.addEventListener("error", ()=>{ /* 檔案不存在就安靜略過 */ });
       this.els[key] = a;
@@ -2519,71 +2407,28 @@ const Audio_ = {
     return this.els[key];
   },
 
-  // 確保這首背景音樂已經有可播放的網址：
-  // 先檢查 IndexedDB 本機快取，有就直接用本機檔案播放；
-  // 沒有的話才向伺服器下載一次，下載完立刻存進 IndexedDB，
-  // 之後（包括下次重新開啟遊戲）就不用再下載這首曲子。
-  ensureSrc(key){
-    if (this.srcReady[key]) return this.srcReady[key];
-    const fileUrl = BGM_FOLDER + BGM_FILES[key];
-    this.srcReady[key] = (async () => {
-      try{
-        const db = await bgmOpenDB();
-        let blob = await bgmIdbGet(db, key);
-        if (!blob){
-          const res = await fetch(fileUrl);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          blob = await res.blob();
-          bgmIdbSet(db, key, blob); // 寫入本機快取失敗也不影響這次播放，安靜略過
-        }
-        return URL.createObjectURL(blob);
-      }catch(e){
-        return fileUrl; // 讀取快取或下載失敗時，退回直接用網址播放
-      }
-    })();
-    return this.srcReady[key];
-  },
-
   play(key){
     if (!BGM_FILES[key]) return;
     if (this.cur === key && this.enabled) return;
-    const prevKey = this.cur;
-    const prev = prevKey ? this.els[prevKey] : null;
+    const prev = this.cur ? this.els[this.cur] : null;
     this.cur = key;
     if (!this.enabled || !this.unlocked) return;
     const next = this.el(key);
-    if (prev) this.fadeOut(prev);
-    this.ensureSrc(key).then((url) => {
-      if (this.cur !== key) return; // 載入/下載期間使用者已切到別首，不要覆蓋
-      if (next.src !== url) next.src = url;
-      next.play().catch(()=>{});
-      this.fadeIn(next);
-    });
+    next.play().catch(()=>{});
+    this.fade(prev, next);
   },
 
-  fadeOut(el){
-    if (this.fadeOutTimer) clearInterval(this.fadeOutTimer);
-    const startVol = el.volume;
-    let t = 0;
-    this.fadeOutTimer = setInterval(()=>{
-      t += 0.06;
-      el.volume = Math.max(0, startVol * (1 - t));
-      if (t >= 1){
-        clearInterval(this.fadeOutTimer); this.fadeOutTimer = null;
-        el.pause(); el.currentTime = 0;
-      }
-    }, 45);
-  },
-
-  fadeIn(el){
-    if (this.fadeInTimer) clearInterval(this.fadeInTimer);
+  fade(prev, next){
+    if (this.fadeTimer) clearInterval(this.fadeTimer);
     const target = this.bgmVol;
     let t = 0;
-    this.fadeInTimer = setInterval(()=>{
+    this.fadeTimer = setInterval(()=>{
       t += 0.06;
-      el.volume = Math.min(target, target * t);
+      if (prev) prev.volume = Math.max(0, target * (1 - t));
+      if (next) next.volume = Math.min(target, target * t);
       if (t >= 1){
-        clearInterval(this.fadeInTimer); this.fadeInTimer = null;
+        clearInterval(this.fadeTimer); this.fadeTimer = null;
+        if (prev && prev !== next){ prev.pause(); prev.currentTime = 0; }
       }
     }, 45);
   },
