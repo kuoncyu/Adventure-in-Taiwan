@@ -788,22 +788,36 @@ const CHARACTER_ART = {};
     });
   }
 
-  // 用 HEAD 先問一下伺服器這首曲子目前的檔案大小，
-  // 拿來跟本機快取比對是否過期，同時也讓進度條算得準一點。
-  // 若伺服器不支援 HEAD 或取不到，就回傳 null，稍後退而求其次處理。
-  function headContentLength(url){
-    return fetch(url, { method: "HEAD", cache: "no-store" }).then(function(r){
-      if (!r.ok) return null;
-      var len = r.headers.get("content-length");
-      return len ? parseInt(len, 10) : null;
-    }).catch(function(){ return null; });
-  }
-
   function init(){
     loadingEl = q("screen-loading");
     barEl = q("loading-bar-fill");
     pctEl = q("loading-pct");
     statusEl = q("loading-status");
+
+    // 安全機制：不管什麼原因卡住，最多等 45 秒就直接放行進遊戲，
+    // 避免玩家被卡在載入畫面出不去（之後仍會用原本的隨選下載機制補齊）。
+    var settled = false;
+    var watchdog = setTimeout(function(){
+      if (settled) return;
+      settled = true;
+      console.warn("[loading] 逾時，改為直接進入遊戲");
+      if (statusEl) statusEl.textContent = "載入時間過長，先以目前資源繼續遊戲…";
+      setTimeout(finish, 600);
+    }, 45000);
+    function done(){
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      finish();
+    }
+    function fail(err){
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      console.error("[loading] 載入失敗", err);
+      if (statusEl) statusEl.textContent = "資源載入失敗，將以簡易模式繼續遊戲（" + ((err && err.message) || err) + "）";
+      setTimeout(finish, 1200);
+    }
 
     var imageDb, bgmDb;
 
@@ -819,29 +833,23 @@ const CHARACTER_ART = {};
           .catch(function(){ return { pack: p, manifest: null }; });
       });
 
-      // ===== 2. 背景音樂：比對 IndexedDB 快取的檔案大小跟伺服器現在的大小 =====
-      var bgmTracks = getBgmTracks();
-      var freshBgmSizes = bgmTracks.map(function(t){
-        return headContentLength(t.url).then(function(size){ return { track: t, size: size }; });
-      });
-
-      return Promise.all([Promise.all(freshManifests), Promise.all(freshBgmSizes)]).then(function(all){
-        var withFresh = all[0], withFreshBgm = all[1];
-
+      return Promise.all(freshManifests).then(function(withFresh){
         var packChecks = withFresh.map(function(wf){
           return Promise.all([idbGet(imageDb, wf.pack.name + ":manifest"), idbGet(imageDb, wf.pack.name + ":pack")])
             .then(function(cached){ return { wf: wf, cachedManifest: cached[0], cachedBuffer: cached[1] }; });
         });
-        var bgmChecks = withFreshBgm.map(function(wb){
-          return idbGet(bgmDb, wb.track.key).then(function(cachedBlob){ return { wb: wb, cachedBlob: cachedBlob }; });
+
+        // ===== 2. 背景音樂：只看 IndexedDB 裡有沒有快取，沒有才下載 =====
+        var bgmTracks = getBgmTracks();
+        var bgmChecks = bgmTracks.map(function(t){
+          return idbGet(bgmDb, t.key).then(function(cachedBlob){ return { track: t, cachedBlob: cachedBlob }; });
         });
 
         return Promise.all([Promise.all(packChecks), Promise.all(bgmChecks)]).then(function(results){
           var packResults = results[0], bgmResults = results[1];
 
           var pendingPacks = [];
-          for (var i = 0; i < packResults.length; i++){
-            var r = packResults[i];
+          packResults.forEach(function(r){
             var fresh = r.wf.manifest, cm = r.cachedManifest, cb = r.cachedBuffer;
             var cacheValid = false;
             if (cm && cb){
@@ -853,23 +861,20 @@ const CHARACTER_ART = {};
               }
             }
             if (cacheValid){
-              try{ r.wf.pack.apply(cm, cb); continue; }
+              try{ r.wf.pack.apply(cm, cb); return; }
               catch(e){ /* 套用失敗，當作沒有快取，重新下載 */ }
             }
             pendingPacks.push({ pack: r.wf.pack, manifest: fresh });
-          }
+          });
 
           var pendingBgm = [];
-          for (var j = 0; j < bgmResults.length; j++){
-            var br = bgmResults[j];
-            var size = br.wb.size, blob = br.cachedBlob;
-            var bgmCacheValid = !!blob && (size == null || blob.size === size);
-            if (!bgmCacheValid){ pendingBgm.push({ track: br.wb.track, knownSize: size }); }
-          }
+          bgmResults.forEach(function(br){
+            if (!br.cachedBlob){ pendingBgm.push(br.track); }
+          });
 
           if (pendingPacks.length === 0 && pendingBgm.length === 0){
             setProgress(1, "從本機讀取完成");
-            finish();
+            done();
             return;
           }
 
@@ -887,9 +892,10 @@ const CHARACTER_ART = {};
           return packManifestsReady.then(function(withManifests){
             var totalBytes = 0;
             withManifests.forEach(function(wm){ totalBytes += (wm.manifest.totalBytes || 0); });
-            // 音樂大小未知時，用平均約 4.3MB 概估，只影響進度條好不好看，不影響下載本身
+            // 音樂檔案大小沒有事先問伺服器，用平均約 4.3MB 概估，
+            // 只影響進度條百分比好不好看，不影響實際下載內容。
             var AVG_BGM_BYTES = 4300000;
-            pendingBgm.forEach(function(pb){ totalBytes += (pb.knownSize || AVG_BGM_BYTES); });
+            totalBytes += pendingBgm.length * AVG_BGM_BYTES;
 
             var receivedByItem = {};
             function overallProgress(){
@@ -912,13 +918,13 @@ const CHARACTER_ART = {};
               });
             });
 
-            var bgmDownloads = pendingBgm.map(function(pb){
-              receivedByItem["bgm:" + pb.track.key] = 0;
-              return fetchPackWithProgress(pb.track.url, function(bytes){
-                receivedByItem["bgm:" + pb.track.key] = bytes;
+            var bgmDownloads = pendingBgm.map(function(t){
+              receivedByItem["bgm:" + t.key] = 0;
+              return fetchPackWithProgress(t.url, function(bytes){
+                receivedByItem["bgm:" + t.key] = bytes;
                 bump("下載背景音樂");
               }).then(function(buffer){
-                return { type: "bgm", track: pb.track, buffer: buffer };
+                return { type: "bgm", track: t, buffer: buffer };
               });
             });
 
@@ -943,14 +949,11 @@ const CHARACTER_ART = {};
 
             return Promise.all(savePacks.concat(saveBgm));
           }).then(function(){
-            finish();
-          }).catch(function(err){
-            if (statusEl) statusEl.textContent = "資源載入失敗，將以簡易模式繼續遊戲（" + err.message + "）";
-            setTimeout(finish, 1200);
+            done();
           });
         });
       });
-    });
+    }).catch(fail);
   }
 
   if (document.readyState === "loading"){
