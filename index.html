@@ -325,6 +325,16 @@ body{
 .codex-card .cx-county{font-size:.68rem;color:var(--mist);}
 .codex-card .cx-name{font-family:var(--serif);font-weight:700;color:var(--paper);}
 .codex-card .cx-old{font-size:.75rem;color:var(--gold-lt);}
+.codex-card{display:flex;gap:10px;align-items:center;}
+.codex-card .cx-ava{
+  width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--paper);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+.codex-card .cx-ava img{width:100%;height:100%;object-fit:cover;}
+.codex-card.locked .cx-ava{background:rgba(255,255,255,.05);border-style:dashed;box-shadow:none;}
+.codex-card .cx-body{flex:1;min-width:0;}
+.modal-fullart{width:100%;max-height:360px;object-fit:contain;object-position:center;border-radius:10px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.25);background:rgba(0,0,0,.15);}
 
 /* ---------- 縣市探索頁：遇見主角群 ---------- */
 .meet-list{display:flex;flex-direction:column;gap:10px;margin-top:6px;margin-bottom:18px;}
@@ -540,7 +550,7 @@ body{
     <button class="brass-btn ghost small" id="btn-about">關於</button>
     <button class="brass-btn ghost small" id="btn-clear-data">🗑️ 清除資料</button>
   </div>
-  <div class="title-foot">第一款真正以台灣地名為主軸的冒險遊戲，全台574則地名的記憶等待被拾起</div>
+  <div class="title-foot">改編自《台灣地名尋根》資料庫 · 574 則地名記憶等待被拾起</div>
 </div>
 
 <!-- ===================== 選角畫面 ===================== -->
@@ -630,31 +640,28 @@ body{
 <!-- ===================== 圖鑑 ===================== -->
 <div class="screen hidden" id="screen-codex">
   <div class="section-title" id="codex-title">📖 地名圖鑑</div>
-  <div class="codex-tabs" style="display:flex;gap:8px;margin-bottom:10px;">
-    <button class="brass-btn ghost small" id="codex-tab-places">📖 地名圖鑑</button>
-    <button class="brass-btn ghost small" id="codex-tab-guides">🧑‍🤝‍🧑 人物圖鑑</button>
+  <div class="codex-toolbar">
+    <select id="codex-filter-region"></select>
+    <input id="codex-search" placeholder="搜尋地名…">
   </div>
-  <div id="codex-places-pane">
-    <div class="codex-toolbar">
-      <select id="codex-filter-region"></select>
-      <input id="codex-search" placeholder="搜尋地名…">
-    </div>
-    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="codex-count"></div>
-    <div class="codex-grid" id="codex-grid"></div>
-  </div>
-  <div id="codex-guides-pane" class="hidden">
-    <div class="codex-subtitle">🧑‍🤝‍🧑 主角群</div>
-    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="protagonist-codex-count"></div>
-    <div class="codex-grid" id="protagonist-codex-grid"></div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="codex-count"></div>
+  <div class="codex-grid" id="codex-grid"></div>
+</div>
 
-    <div class="codex-subtitle">🧭 各縣市嚮導</div>
-    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="guide-codex-count"></div>
-    <div class="codex-grid" id="guide-codex-grid"></div>
+<!-- ===================== 人物 ===================== -->
+<div class="screen hidden" id="screen-people">
+  <div class="section-title" id="people-title">🧑‍🤝‍🧑 人物</div>
+  <div class="codex-subtitle">🧑‍🤝‍🧑 主角群</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="protagonist-codex-count"></div>
+  <div class="codex-grid" id="protagonist-codex-grid"></div>
 
-    <div class="codex-subtitle">🎒 隨行夥伴</div>
-    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="companion-codex-count"></div>
-    <div class="codex-grid" id="companion-codex-grid"></div>
-  </div>
+  <div class="codex-subtitle">🧭 各縣市嚮導</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="guide-codex-count"></div>
+  <div class="codex-grid" id="guide-codex-grid"></div>
+
+  <div class="codex-subtitle">🎒 隨行夥伴</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="companion-codex-count"></div>
+  <div class="codex-grid" id="companion-codex-grid"></div>
 </div>
 
 <!-- ===================== 自由挑戰區 ===================== -->
@@ -668,7 +675,7 @@ body{
   <button data-go="worldmap"><span class="bi">🧭</span>地圖</button>
   <button data-go="codex"><span class="bi">📖</span>圖鑑</button>
   <button data-go="challenge"><span class="bi">🏆</span>挑戰</button>
-  <button data-go="party"><span class="bi">🎒</span>夥伴</button>
+  <button data-go="people"><span class="bi">🧑‍🤝‍🧑</span>人物</button>
   <button data-go="save"><span class="bi">💾</span>存檔</button>
 </div>
 
@@ -1983,7 +1990,7 @@ function openProtagonistModal(key){
   const isSelf = state.charKey === key;
   const rel = isSelf ? null : relationBetween(state.charKey, key);
   openModal(
-    (artFor(c.name) ? '<img class="modal-portrait" src="'+artFor(c.name).face+'">' : "")+
+    (artFor(c.name) ? '<img class="modal-fullart" src="'+artFor(c.name).full+'">' : "")+
     '<div class="detail-title">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）'+(isSelf?' ★ 你所選擇的角色':'')+'</div>'+
     '<div class="detail-old">'+escapeHtml(c.school)+(rel?'　'+RELATION_LABEL[rel]:'')+'</div>'+
     '<div class="detail-body">'+escapeHtml(c.blurb)+'<br><br>'+
@@ -3033,7 +3040,7 @@ function regionStats(region){
 }
 
 // ---------- 畫面切換 ----------
-const screens = ["title","charselect","dialogue","worldmap","region","county","codex","challenge"];
+const screens = ["title","charselect","dialogue","worldmap","region","county","codex","people","challenge"];
 let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂部狀態列置中位置
 function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
@@ -3814,7 +3821,6 @@ function detailHtml(p){
 }
 
 function renderCodex(){
-  showCodexTab("places");
   const sel = document.getElementById("codex-filter-region");
   if (!sel.dataset.init){
     sel.dataset.init = "1";
@@ -3851,26 +3857,8 @@ function drawCodexGrid(){
   document.getElementById("codex-count").textContent = "已蒐集 "+discoveredCount+" ／ 顯示 "+shown+" 則（全庫共 "+placesData.length+" 則地名記憶）";
 }
 
-// ---------- 嚮導圖鑑 ----------
-function showCodexTab(tab){
-  const placesPane = document.getElementById("codex-places-pane");
-  const guidesPane = document.getElementById("codex-guides-pane");
-  const tabPlaces = document.getElementById("codex-tab-places");
-  const tabGuides = document.getElementById("codex-tab-guides");
-  if (tab === "guides"){
-    placesPane.classList.add("hidden"); guidesPane.classList.remove("hidden");
-    tabGuides.classList.remove("ghost"); tabPlaces.classList.add("ghost");
-    renderCharacterCodex();
-  } else {
-    guidesPane.classList.add("hidden"); placesPane.classList.remove("hidden");
-    tabPlaces.classList.remove("ghost"); tabGuides.classList.add("ghost");
-  }
-}
-document.getElementById("codex-tab-places").addEventListener("click", ()=>showCodexTab("places"));
-document.getElementById("codex-tab-guides").addEventListener("click", ()=>showCodexTab("guides"));
-
-// ---------- 人物圖鑑（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴）----------
-function renderCharacterCodex(){
+// ---------- 人物（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴）----------
+function renderPeopleScreen(){
   renderProtagonistCodex();
   renderGuideCodex();
   renderCompanionCodex();
@@ -3888,15 +3876,19 @@ function renderProtagonistCodex(){
     card.className = "codex-card"+(met?"":" locked")+(isSelf?" self":"");
     if (met){
       const rel = isSelf ? null : relationBetween(state.charKey, c.key);
-      card.innerHTML = '<div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
+      card.innerHTML = '<div class="cx-ava">'+avaHtml(c.name,c.icon)+'</div>'+
+        '<div class="cx-body">'+
+        '<div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
         '<div class="cx-name">'+c.icon+' '+escapeHtml(c.name)+(isSelf?' ★':'')+'</div>'+
         '<div class="cx-old">'+(isSelf?"你所選擇的角色":escapeHtml(c.nick))+'</div>'+
-        (rel?'<div class="cx-relation '+rel+'">'+RELATION_LABEL[rel]+'</div>':'');
+        (rel?'<div class="cx-relation '+rel+'">'+RELATION_LABEL[rel]+'</div>':'')+
+        '</div>';
       card.style.cursor = "pointer";
       card.addEventListener("click", ()=> openProtagonistModal(c.key));
     } else {
-      card.innerHTML = '<div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
-        '<div class="cx-name">？？？</div><div class="cx-old">尚未相遇</div>';
+      card.innerHTML = '<div class="cx-ava">？</div>'+
+        '<div class="cx-body"><div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
+        '<div class="cx-name">？？？</div><div class="cx-old">尚未相遇</div></div>';
     }
     grid.appendChild(card);
   });
@@ -3916,16 +3908,18 @@ function renderGuideCodex(){
     const card = document.createElement("div");
     card.className = "codex-card"+(met?"":" locked");
     if (met){
-      card.innerHTML = '<div class="cx-county">'+escapeHtml(g.county)+'</div>'+
-        '<div class="cx-name">'+g.icon+' '+escapeHtml(g.name)+'</div><div class="cx-old">在地嚮導</div>';
+      card.innerHTML = '<div class="cx-ava">'+avaHtml(g.name,g.icon)+'</div>'+
+        '<div class="cx-body"><div class="cx-county">'+escapeHtml(g.county)+'</div>'+
+        '<div class="cx-name">'+g.icon+' '+escapeHtml(g.name)+'</div><div class="cx-old">在地嚮導</div></div>';
       card.style.cursor = "pointer";
       card.addEventListener("click", ()=> openModal(
-        (artFor(g.name) ? '<img class="modal-portrait" src="'+artFor(g.name).face+'">' : "")+
+        (artFor(g.name) ? '<img class="modal-fullart" src="'+artFor(g.name).full+'">' : "")+
         '<div class="detail-title">'+g.icon+' '+escapeHtml(g.name)+'</div>'+
         '<div class="detail-old">'+escapeHtml(g.title||"在地嚮導")+'・'+escapeHtml(g.county)+'</div>'+
         '<div class="detail-body">'+escapeHtml(g.desc||"")+'</div>', {center:true}));
     } else {
-      card.innerHTML = '<div class="cx-county">'+escapeHtml(g.county)+'</div><div class="cx-name">？？？</div><div class="cx-old">尚未認識</div>';
+      card.innerHTML = '<div class="cx-ava">？</div>'+
+        '<div class="cx-body"><div class="cx-county">'+escapeHtml(g.county)+'</div><div class="cx-name">？？？</div><div class="cx-old">尚未認識</div></div>';
     }
     grid.appendChild(card);
   });
@@ -3945,16 +3939,18 @@ function renderCompanionCodex(){
     const card = document.createElement("div");
     card.className = "codex-card"+(met?"":" locked");
     if (met){
-      card.innerHTML = '<div class="cx-county">隨行夥伴</div>'+
-        '<div class="cx-name">'+g.icon+' '+escapeHtml(g.name)+'</div><div class="cx-old">'+escapeHtml(g.title||"")+'</div>';
+      card.innerHTML = '<div class="cx-ava">'+avaHtml(g.name,g.icon)+'</div>'+
+        '<div class="cx-body"><div class="cx-county">隨行夥伴</div>'+
+        '<div class="cx-name">'+g.icon+' '+escapeHtml(g.name)+'</div><div class="cx-old">'+escapeHtml(g.title||"")+'</div></div>';
       card.style.cursor = "pointer";
       card.addEventListener("click", ()=> openModal(
-        (artFor(g.name) ? '<img class="modal-portrait" src="'+artFor(g.name).face+'">' : "")+
+        (artFor(g.name) ? '<img class="modal-fullart" src="'+artFor(g.name).full+'">' : "")+
         '<div class="detail-title">'+g.icon+' '+escapeHtml(g.name)+'</div>'+
         '<div class="detail-old">'+escapeHtml(g.title||"隨行夥伴")+'</div>'+
         '<div class="detail-body">'+escapeHtml(g.desc||"")+'</div>', {center:true}));
     } else {
-      card.innerHTML = '<div class="cx-county">隨行夥伴</div><div class="cx-name">？？？</div><div class="cx-old">尚未加入</div>';
+      card.innerHTML = '<div class="cx-ava">？</div>'+
+        '<div class="cx-body"><div class="cx-county">隨行夥伴</div><div class="cx-name">？？？</div><div class="cx-old">尚未加入</div></div>';
     }
     grid.appendChild(card);
   });
@@ -4112,19 +4108,17 @@ function renderTopbar(){
   bar.innerHTML = '<div class="id" id="topbar-id" style="cursor:pointer;">'+idHtml+'</div>'+
     '<div class="chapter" id="topbar-chapter">'+(curChapterLabel?escapeHtml(curChapterLabel):'')+'</div>'+
     '<div style="display:flex;gap:6px;">'+
-      '<button class="menu-btn" id="topbar-fullscreen" title="全螢幕">'+(isFullscreen()?"🗗":"⛶")+'</button>'+
-      '<button class="menu-btn" id="topbar-audio">🔊</button>'+
+      '<button class="menu-btn" id="topbar-settings" title="設定">⚙️</button>'+
       '<button class="menu-btn" id="topbar-save">💾</button>'+
       '<button class="menu-btn" id="topbar-menu" title="回主選單">🏠</button>'+
     '</div>';
   bar.querySelector("#topbar-id").addEventListener("click", openPlayerInfoModal);
   bar.querySelector("#topbar-save").addEventListener("click", ()=>{ sfx("click"); openSaveModal(); });
-  bar.querySelector("#topbar-audio").addEventListener("click", ()=>{ sfx("click"); openAudioModal(); });
-  bar.querySelector("#topbar-fullscreen").addEventListener("click", toggleFullscreen);
+  bar.querySelector("#topbar-settings").addEventListener("click", ()=>{ sfx("click"); openSettingsModal(); });
   bar.querySelector("#topbar-menu").addEventListener("click", backToMainMenu);
 }
 
-// 點左上角玩家姓名：開啟人物資訊、地名學識與同行夥伴總覽
+// 點左上角玩家姓名：開啟人物資訊、地名學識，並可前往已蒐集人物（同下方「人物」選單）
 function openPlayerInfoModal(){
   sfx("click");
   const c = curChar();
@@ -4138,10 +4132,38 @@ function openPlayerInfoModal(){
     '<div class="detail-title">'+playerIcon()+' '+escapeHtml(playerName())+'</div>'+
     schoolLine+personaLine+blurbLine+
     '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--paper-line);font-family:var(--serif);">✦ 地名學識 <b>'+state.loreScore+'</b></div>'+
-    '<div class="detail-title" style="font-size:.9rem;margin-top:14px;">🎒 同行夥伴</div>'+
-    '<div id="player-modal-party-row"></div>'
+    '<button class="brass-btn small" id="player-modal-people-btn" style="margin-top:14px;">🧑‍🤝‍🧑 查看已蒐集人物</button>'
     , {center:true});
-  renderPartyRow(back.querySelector("#player-modal-party-row"));
+  back.querySelector("#player-modal-people-btn").addEventListener("click", ()=>{
+    sfx("click");
+    back.remove();
+    goToPeopleScreen();
+  });
+}
+
+// 前往「人物」畫面；若目前劇情尚未播完，先確認是否中斷
+function goToPeopleScreen(){
+  if (!isDialogueActive()){
+    setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people");
+    return;
+  }
+  const back = openModal(
+    '<div class="detail-title">離開目前劇情</div>'+
+    '<div class="detail-body">目前劇情尚未播放完畢，前往人物將會中斷這段對話。建議先點上方 💾 取得存檔代碼，之後可用「讀取存檔代碼」繼續旅程。確定要離開嗎？</div>'+
+    '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
+      '<button class="brass-btn ghost small" id="people-leave-cancel">取消</button>'+
+      '<button class="brass-btn small" id="people-leave-confirm">確定離開</button>'+
+    '</div>'
+    , {center:true});
+  back.querySelector("#people-leave-cancel").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
+  back.querySelector("#people-leave-confirm").addEventListener("click", ()=>{
+    sfx("click"); back.remove();
+    if (typing){ clearInterval(typing); typing = null; }
+    dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
+    curSceneBg = null;
+    const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
+    setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people");
+  });
 }
 
 // ---------- 自由挑戰區 ----------
@@ -4216,8 +4238,7 @@ document.querySelectorAll("#bottom-nav button").forEach(btn=>{
     if (go === "worldmap"){ setChapterLabel(""); renderWorldMap(); renderTopbar(); showScreen("worldmap"); }
     else if (go === "codex"){ setChapterLabel(""); renderCodex(); renderTopbar(); showScreen("codex"); }
     else if (go === "challenge"){ setChapterLabel(""); renderChallengeScreen(); renderTopbar(); showScreen("challenge"); }
-    else if (go === "party"){ openModal('<div class="detail-title">🎒 同行夥伴</div><div id="party-modal-row"></div>', {center:true});
-      renderPartyRow(document.querySelector("#modal-root .modal-back:last-child #party-modal-row")); }
+    else if (go === "people"){ setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people"); }
     else if (go === "save"){ openSaveModal(); }
   });
 });
@@ -4352,14 +4373,15 @@ document.getElementById("btn-clear-data").addEventListener("click", ()=>{
 
 refreshContinueButton();
 
-// ---------- 音訊設定 ----------
-function openAudioModal(){
+// ---------- 設定（音訊 ＋ 全螢幕）----------
+function openSettingsModal(){
   const back = openModal(
-    '<div class="detail-title">🔊 音訊設定</div>'+
+    '<div class="detail-title">⚙️ 設定</div>'+
     '<div class="detail-body" style="font-size:.8rem;">背景音樂需要把 6 個 mp3 檔放在與本遊戲 HTML 相同的資料夾中；缺少檔案時遊戲仍可正常遊玩，只是沒有音樂。音效不需要外部檔案。</div>'+
     '<div class="audio-row"><label>背景音樂</label><input type="range" id="a-bgm" min="0" max="100" value="'+Math.round(Audio_.bgmVol*100)+'"></div>'+
     '<div class="audio-row"><label>遊戲音效</label><input type="range" id="a-sfx" min="0" max="100" value="'+Math.round(Audio_.sfxVol*100)+'"></div>'+
-    '<div class="audio-row"><label>總開關</label><button class="brass-btn small" id="a-toggle">'+(Audio_.enabled?"🔊 開啟中":"🔇 已靜音")+'</button></div>'
+    '<div class="audio-row"><label>音效總開關</label><button class="brass-btn small" id="a-toggle">'+(Audio_.enabled?"🔊 開啟中":"🔇 已靜音")+'</button></div>'+
+    '<div class="audio-row"><label>全螢幕</label><button class="brass-btn small" id="a-fullscreen">'+(isFullscreen()?"🗗 離開全螢幕":"⛶ 進入全螢幕")+'</button></div>'
     , {center:true});
   back.querySelector("#a-bgm").addEventListener("input", e=>{
     Audio_.bgmVol = e.target.value/100; Audio_.applyVolume();
@@ -4372,6 +4394,7 @@ function openAudioModal(){
     e.target.textContent = Audio_.enabled ? "🔊 開啟中" : "🔇 已靜音";
     if (Audio_.enabled) sfx("click");
   });
+  back.querySelector("#a-fullscreen").addEventListener("click", ()=>{ toggleFullscreen(); });
 }
 document.getElementById("btn-about").addEventListener("click", ()=>{
   sfx("click");
@@ -4379,8 +4402,8 @@ document.getElementById("btn-about").addEventListener("click", ()=>{
     '<div class="detail-title">關於</div>'+
     '<div style="margin-top:10px;font-size:.8rem;line-height:1.9;color:var(--ink-text);text-align:left;">'+
       '<div>遊戲製作設計：郭柏宏</div>'+
-      '<div>版本號：20260923</div>'+
-      '<div style="margin-top:6px;">致謝詞：致謝詞：首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台574則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
+      '<div>版本號：20260917</div>'+
+      '<div style="margin-top:6px;">致謝詞：感謝《台灣地名尋根》資料庫提供珍貴史料，以及所有給予意見與測試協助的朋友，讓這574則地名記憶得以化作旅程，被玩家一一拾起。</div>'+
     '</div>'
     , {center:true});
 });
@@ -4432,8 +4455,8 @@ function toggleFullscreen(){
   enterFullscreen();
 }
 function syncFullscreenBtn(){
-  const btn = document.getElementById("topbar-fullscreen");
-  if (btn) btn.textContent = isFullscreen() ? "🗗" : "⛶";
+  const fsBtn = document.getElementById("a-fullscreen");
+  if (fsBtn) fsBtn.textContent = isFullscreen() ? "🗗 離開全螢幕" : "⛶ 進入全螢幕";
 }
 ["fullscreenchange","webkitfullscreenchange","msfullscreenchange"].forEach(evt=>{
   document.addEventListener(evt, syncFullscreenBtn);
