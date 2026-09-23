@@ -2099,73 +2099,6 @@ function pairScriptKey(k1, k2){
   return (i1 < i2) ? (k1+"_"+k2) : (k2+"_"+k1);
 }
 
-// 建立「相遇」對話步驟：優先使用專屬好友／競爭對手劇本，
-// 其次使用該對角色專屬的初次見面劇本（PAIR_MEET_SCRIPTS），
-// 兩者皆無才會退回最通用的萬用初次見面對話（理論上不會發生）。
-function buildMeetSteps(otherKey){
-  const other = CHAR_BY_KEY[otherKey];
-  const county = PROTAGONIST_HOME_COUNTY[otherKey] || "";
-  const rel = relationBetween(state.charKey, otherKey);
-  const steps = [];
-  steps.push({type:"line", speaker:"旁白", text:"你在"+county+"，意外遇見了同樣在探尋地名記憶的「"+other.name+"」。", scene:other.icon});
-  const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
-  const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
-  if (script){
-    script.forEach(ln=>{
-      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
-    });
-  } else if (pairScript){
-    pairScript.forEach(ln=>{
-      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
-    });
-  } else {
-    steps.push({type:"line", speaker:other.name, icon:other.icon,
-      text:"你好，我是"+other.name+"，大家都叫我「"+other.nick+"」。"+other.persona});
-    steps.push({type:"line", speaker:playerName(), icon:playerIcon(), isPlayer:true,
-      text:"你好，我是"+playerName()+"，也是來這裡尋找地名記憶的旅人。"});
-    steps.push({type:"line", speaker:other.name, icon:other.icon,
-      text:"是嗎？我平常喜歡"+other.hobby+"。如果你也對這裡的地名有興趣，我們可以算半個同好！"});
-  }
-  return steps;
-}
-
-function playMeetProtagonist(otherKey){
-  const steps = buildMeetSteps(otherKey);
-  playSequence(steps, ()=>{
-    if (!state.metProtagonists[otherKey]){
-      state.metProtagonists[otherKey] = true;
-      state.loreScore += 1;
-      renderTopbar();
-      const other = CHAR_BY_KEY[otherKey];
-      toast("👥 已認識 "+other.icon+" "+other.name);
-    }
-    renderCountyScreen(currentCounty);
-    showScreen("county");
-  });
-}
-
-// 開啟主角群成員的詳細人物介紹（自己 / 已相遇的其他主角群成員）
-function openProtagonistModal(key){
-  const c = CHAR_BY_KEY[key];
-  if (!c) return;
-  const isSelf = state.charKey === key;
-  const rel = isSelf ? null : relationBetween(state.charKey, key);
-  openModal(
-    (artFor(c.name) ? '<img class="modal-fullart" src="'+artFor(c.name).full+'">' : "")+
-    '<div class="detail-title">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）'+(isSelf?' ★ 你所選擇的角色':'')+'</div>'+
-    '<div class="detail-old">'+escapeHtml(c.school)+(rel?'　'+RELATION_LABEL[rel]:'')+'</div>'+
-    '<div class="detail-body">'+escapeHtml(c.blurb)+
-      '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--paper-line);">'+
-      '<div style="margin-bottom:6px;"><b>🧠 個性：</b>'+escapeHtml(c.persona)+'</div>'+
-      '<div style="margin-bottom:6px;"><b>🎯 喜好：</b>'+escapeHtml(c.hobby)+'</div>'+
-      '<div style="margin-bottom:6px;"><b>💛 好友：</b>'+escapeHtml(c.friend)+'</div>'+
-      '<div><b>🔥 競爭對手：</b>'+escapeHtml(c.rival)+'</div>'+
-      '</div>'+
-    '</div>', {center:true});
-}
-
 // ---------------------------------------------------------------------
 // 主角語氣庫：依角色 voice 挑選，讓每位主角的台詞都有一點點不同
 // greet=初次同行／arrive=抵達新地點／curious=聽完介紹的追問
@@ -3391,6 +3324,379 @@ function buildStopSteps(stop, region, ctx){
   return steps;
 }
 
+// 建立「相遇」對話步驟：優先使用專屬好友／競爭對手劇本，
+// 其次使用該對角色專屬的初次見面劇本（PAIR_MEET_SCRIPTS），
+// 兩者皆無才會退回最通用的萬用初次見面對話（理論上不會發生）。
+function buildMeetSteps(otherKey){
+  const other = CHAR_BY_KEY[otherKey];
+  const county = PROTAGONIST_HOME_COUNTY[otherKey] || "";
+  const rel = relationBetween(state.charKey, otherKey);
+  const steps = [];
+  steps.push({type:"line", speaker:"旁白", text:"你在"+county+"，意外遇見了同樣在探尋地名記憶的「"+other.name+"」。", scene:other.icon});
+  const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
+  const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
+  if (script){
+    script.forEach(ln=>{
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else if (pairScript){
+    pairScript.forEach(ln=>{
+      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else {
+    steps.push({type:"line", speaker:other.name, icon:other.icon,
+      text:"你好，我是"+other.name+"，大家都叫我「"+other.nick+"」。"+other.persona});
+    steps.push({type:"line", speaker:playerName(), icon:playerIcon(), isPlayer:true,
+      text:"你好，我是"+playerName()+"，也是來這裡尋找地名記憶的旅人。"});
+    steps.push({type:"line", speaker:other.name, icon:other.icon,
+      text:"是嗎？我平常喜歡"+other.hobby+"。如果你也對這裡的地名有興趣，我們可以算半個同好！"});
+  }
+  return steps;
+}
+
+function playMeetProtagonist(otherKey){
+  const steps = buildMeetSteps(otherKey);
+  playSequence(steps, ()=>{
+    if (!state.metProtagonists[otherKey]){
+      state.metProtagonists[otherKey] = true;
+      state.loreScore += 1;
+      renderTopbar();
+      const other = CHAR_BY_KEY[otherKey];
+      toast("👥 已認識 "+other.icon+" "+other.name);
+    }
+    renderCountyScreen(currentCounty);
+    showScreen("county");
+  });
+}
+
+// ---------------------------------------------------------------------
+// 主角群．主線劇情整合（目前已完成「林承翰」「蘇曉嵐」「陳柏宇」「黃思妤」「郭子謙」
+// 「葉宛真」六位視角，其餘角色將依同架構陸續補上）：玩家進入每個區域的主線時，會遇見該區的主角群同伴，
+// 依照彼此關係（好友／競爭對手／初次見面）互動、一起推進當區的地名
+// 主線，並在啟程前往下一區前互相道別。原本放在縣市頁面裡、與主線
+// 脫節的「遇見主角群」單獨側邊互動，對已整合進主線的角色不再重複顯示
+// （見 renderCountyProtagonists）。
+// 注意：每位主角的「家鄉／出發區域」不同（見 PROTAGONIST_HOME_COUNTY、
+// regionOrder()），旅程會從該角色的家鄉開始、依北→中→南→東→離島的固定
+// 順序循環，直到繞回家鄉前一區為止（即該角色的「最後一站」）。因此以下
+// 各角色互動內容，在撰寫「下一站是哪裡」「是否為最後一站」等台詞時，
+// 都必須對照該主角實際的出發區域來寫，不能直接套用北部主角（林承翰／
+// 蘇曉嵐）的旅程順序。
+// ---------------------------------------------------------------------
+const PROTAGONIST_MAIN_INTEGRATED = { hanlin:true, shiaolan:true, poyu:true, sihyu:true, zihchian:true, wanjhen:true };
+// 每個區域「土生土長」的兩位主角群成員（同校兩人）。實際同行的人選，
+// 會在下方 localCompanionKeys() 中排除掉玩家本人，藉此讓同一份資料
+// 同時支援「林承翰在北部遇到蘇曉嵐」與「蘇曉嵐在北部遇到林承翰」兩種情況。
+const REGION_LOCAL_PROTAGONISTS = {
+  north:["hanlin","shiaolan"], central:["poyu","sihyu"], south:["zihchian","wanjhen"],
+  east:["lali","kerou"], island:["jianlin","jiaen"]
+};
+function localCompanionKeys(regionId){
+  return (REGION_LOCAL_PROTAGONISTS[regionId] || []).filter(k => k !== state.charKey);
+}
+const REGION_MEET_NARRATION = {
+  north:"鹹鹹的海風迎面吹來，你才剛踏進基隆，就先在熟悉的街角撞見了對方。",
+  central:"才剛踏進台中，一陣手遊的按鍵聲和一段熱舞的節奏，幾乎同時朝你這裡靠近。",
+  south:"赤崁樓前的廟埕邊，一位捧著舊書、一位端著剛出爐米糕的身影，同時注意到了你。",
+  east:"翻過中央山脈沒多久，兩道熟悉的身影已經出現在你面前——一個安靜寡言，一個笑聲清亮。",
+  island:"退潮的潮間帶上，兩個蹲在礁石邊嘻嘻鬧鬧的身影，被你的腳步聲吸引，回過頭來。"
+};
+// 同區主角群兩人（皆非玩家本人時）彼此之間，一起推進主線時的專屬互動
+// （目前用到的五對，剛好都是彼此的好友關係）
+const PROTAGONIST_PAIR_INTERACT = {
+  hanlin_shiaolan:[
+    {spk:"hanlin", text:"（大聲）欸，小嵐！妳看，這個地名故事我聽一次就記住了！"},
+    {spk:"shiaolan", text:"……（翻著筆記本）我記得你上禮拜連自己家的門牌都記錯。"},
+    {spk:"hanlin", text:"那不一樣啦！這個有畫面，我記事情就是要靠畫面！"},
+    {spk:"shiaolan", text:"……好啦，那我畫下來，你負責大聲講給大家聽，這樣分工剛好。"}],
+  poyu_sihyu:[
+    {spk:"sihyu", text:"（轉頭瞪他）欸，你幹嘛老低著頭滑手機，都沒在看風景！"},
+    {spk:"poyu", text:"（頭也不抬）我在查資料啦……而且我剛剛查到的地名故事，肯定比妳的舞步還精彩。"},
+    {spk:"sihyu", text:"哼，那就邊走邊比賽，看誰先把這裡的地名故事講完，輸的人要幫贏的人拍一支影片！"},
+    {spk:"poyu", text:"……妳這樣講，我就不能認輸了。"}],
+  zihchian_wanjhen:[
+    {spk:"wanjhen", text:"（笑咪咪）子謙，你又要去查證那些碑文了吧？"},
+    {spk:"zihchian", text:"當然，每個說法都要有憑有據，不能隨便聽聽就算數。"},
+    {spk:"wanjhen", text:"呵呵，那我先去幫大家買點吃的，你們慢慢查，我等等就回來會合。"},
+    {spk:"zihchian", text:"……妳每次都用食物解決一切。不過，也謝了。"}],
+  lali_kerou:[
+    {spk:"kerou", text:"（開心大喊）阿利，你看，這裡的地名故事跟阿公說的傳說好像喔！"},
+    {spk:"lali", text:"……嗯，土地不會騙人，故事會流傳下來，是有原因的。"},
+    {spk:"kerou", text:"那我來唱一段，把這個地名的故事唱成歌，這樣大家就不會忘記了！"},
+    {spk:"lali", text:"……好。"}],
+  jianlin_jiaen:[
+    {spk:"jianlin", text:"（賊笑）嘉恩，妳看，我這次找到的地名故事，是不是很酷！"},
+    {spk:"jiaen", text:"（翻著剪報比對）……確實跟我剪報上的記載對得上，算你這次沒亂講。"},
+    {spk:"jianlin", text:"哈，那當然！我可是全澎湖最懂潮汐跟地名的人！"},
+    {spk:"jiaen", text:"……先別得意，還有好幾個地名沒查完呢。"}]
+};
+function buildProtagonistPairSteps(k1, k2){
+  const script = PROTAGONIST_PAIR_INTERACT[pairScriptKey(k1, k2)];
+  if (!script) return [];
+  return script.map(ln=>{ const c = CHAR_BY_KEY[ln.spk]; return {type:"line", speaker:c.name, icon:c.icon, text:ln.text}; });
+}
+// 各主角群成員在場陪同主線推進時，於每一站測驗後不定期補上的一句反應
+// （依站點序號輪流插入，讓同行的夥伴顯得「一直都在」，而非只出現在頭尾）
+const PROTAGONIST_STOP_BANTER = {
+  hanlin:["（一拍手掌）欸！這個故事聽起來比籃球比賽還熱血！","（雙手插腰，一臉得意）這種事我聽一次就記住了，運動員的腦子才不是只有肌肉！","（大聲）走走走，下一個地名在哪，我用衝的過去！"],
+  shiaolan:["（低頭抄著筆記）……這個說法，我要記下來。","（抬頭看了看四周）……這裡的招牌，好像也藏著另一個地名故事。","……（小聲）我覺得，你剛剛聽得比我還認真。"],
+  poyu:["（滑著手機比對）欸，這個說法跟我查到的資料對得上，算你們厲害。","……這故事，比我攻略本裡寫的還精彩。","（推了推書包）行吧，這個地名我記住了，比背英文單字有趣多了。"],
+  sihyu:["（跟著節奏點頭）欸，這個地名唸起來還挺有韻律的！","我把這段拍下來了，晚點剪進影片裡！","（拍手）哇，這個故事我要說給我們熱舞社聽！"],
+  zihchian:["（點頭）這個說法有憑有據，可以記錄下來。","……不過我還是要再去查查別的文獻，交叉比對一下。","地名這種事，就該像這樣一字一句查清楚。"],
+  wanjhen:["（微笑）原來這裡的小吃攤，背後藏著這麼一段故事啊。","……我要把這個故事，加進我的食記裡。","（遞出點心）聽故事會餓，來一份墊墊肚子。"],
+  lali:["……嗯，土地記得的事，比我們想的還多。","……這個名字，聽起來像山在說話。","……我阿公說得對，地名就是地圖。"],
+  kerou:["（哼著調子）這個地名，唸起來真的很像一首歌的開頭！","我要把這段故事編成歌，唱給部落的阿嬤聽！","（開心跳起來）太好聽了，這個故事！"],
+  jianlin:["（賊笑）這個故事，比我想的還扯，我喜歡！","欸，下次退潮我們去那邊找找看，說不定還有更多故事！","（抓抓頭）好啦好啦，這次算我服氣，故事真的挺酷的。"],
+  jiaen:["（在剪報本上寫下重點）……這個我要收進我的地名冊。","……嗯，跟我蒐集的資料對得上，可信度很高。","……這種故事，比課本教的有意思多了。"]
+};
+function buildMainCastStopBanter(region, idx){
+  if (!PROTAGONIST_MAIN_INTEGRATED[state.charKey]) return [];
+  const keys = localCompanionKeys(region.id);
+  if (!keys.length) return [];
+  const k = keys[idx % keys.length];
+  const pool = PROTAGONIST_STOP_BANTER[k];
+  if (!pool || !pool.length) return [];
+  const c = CHAR_BY_KEY[k];
+  return [{type:"line", speaker:c.name, icon:c.icon, text:pool[idx % pool.length]}];
+}
+// 相遇時的專屬台詞（沿用 MEET_SCRIPTS／PAIR_MEET_SCRIPTS，依關係自動挑選）
+function buildOneMeetLines(otherKey){
+  const other = CHAR_BY_KEY[otherKey];
+  const rel = relationBetween(state.charKey, otherKey);
+  const steps = [];
+  const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
+  const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
+  if (script){
+    script.forEach(ln=>{
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else if (pairScript){
+    pairScript.forEach(ln=>{
+      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else {
+    steps.push({type:"line", speaker:other.name, icon:other.icon, text:"你好，我是"+other.name+"，大家都叫我「"+other.nick+"」。"});
+  }
+  return steps;
+}
+function buildMainCastGreetSteps(region){
+  if (!PROTAGONIST_MAIN_INTEGRATED[state.charKey]) return [];
+  const keys = localCompanionKeys(region.id);
+  if (!keys.length) return [];
+  const steps = [];
+  const nar = REGION_MEET_NARRATION[region.id];
+  if (nar) steps.push({type:"line", speaker:"旁白", text:nar});
+  keys.forEach(k=>{
+    steps.push.apply(steps, buildOneMeetLines(k));
+    if (!state.metProtagonists[k]){ state.metProtagonists[k] = true; state.loreScore += 1; }
+  });
+  if (keys.length === 2) steps.push.apply(steps, buildProtagonistPairSteps(keys[0], keys[1]));
+  const names = keys.map(k=>CHAR_BY_KEY[k].name).join("、");
+  steps.push({type:"line", speaker:MENTOR.name, icon:MENTOR.icon,
+    text:"既然有緣同路，"+names+"，就讓你們陪"+playerName()+"，一起把這段地名記憶找回來吧。"});
+  return steps;
+}
+// 離開這個區域、前往下一區之前，跟本區主角群成員道別的專屬台詞
+// （依「該角色」與已整合玩家視角（林承翰／蘇曉嵐／陳柏宇）之間的實際關係
+// 分別撰寫；每個角色的「最後一區」依其出發家鄉而不同，見上方 regionOrder()
+// 說明，撰寫台詞時需對照該玩家視角實際會不會走到「旅程最後一站」）
+const PROTAGONIST_FAREWELL = {
+  hanlin:{friend:[
+    {spk:"other", text:"（抓抓頭，難得有點捨不得）欸，妳真的要往中部去囉？"},
+    {spk:"me", text:"嗯，接下來要去中部了，你要幫我把基隆顧好喔。"},
+    {spk:"other", text:"哈，這什麼奇怪的要求，不過沒問題！妳的筆記本借我看一下，我也想學學怎麼把地名記熟。"},
+    {spk:"me", text:"（把筆記本遞給他抄了幾頁）拿去，抄完要記得還我。"},
+    {spk:"other", text:"（用力揮手）出發吧！我在這裡等妳凱旋歸來！"}],
+    stranger:{
+    last:[
+    {spk:"other", text:"（撓撓頭，有點不好意思）我還以為運動比讀書強的人，只有我一個。"},
+    {spk:"me", text:"我也是啊，只是我把地名故事當成攻略在打而已。"},
+    {spk:"other", text:"哈，那你這趟打到最後一關了嗎？"},
+    {spk:"me", text:"（笑）算是吧，北部是我這趟旅程的最後一站了。"},
+    {spk:"other", text:"（用力握拳）那你可要打贏最終魔王！有空再來基隆，我帶你去看港邊的船。"}],
+    mid:[
+    {spk:"other", text:"（撓撓頭，有點不好意思）本來以為運動比讀書強的人，就只有我一個。"},
+    {spk:"me", text:"讀書跟運動不衝突，只是我剛好比較執著在考證地名的由來而已。"},
+    {spk:"other", text:"哈，那你接下來要去哪一關？"},
+    {spk:"me", text:"中部，那邊還有幾筆記載要親自核對，查完就準備收尾了。"},
+    {spk:"other", text:"（用力握拳）辛苦了！有空再來基隆，我帶你去看港邊的船。"}]}},
+  shiaolan:{friend:[
+    {spk:"other", text:"（闔上筆記本，抬頭看他）……要走了嗎？"},
+    {spk:"me", text:"嗯，接下來要去中部了，妳要不要也順便畫幾張速寫給我？"},
+    {spk:"other", text:"……（點頭，把筆記本塞進他手裡）拿去，路上要記得把東西寫下來，不是只有我要記。"},
+    {spk:"me", text:"好啦好啦，我盡量。妳也是，別又忘記回家吃飯。"},
+    {spk:"other", text:"……（小小聲）你也要小心。"}],
+    stranger:{
+    last:[
+    {spk:"other", text:"（闔上速寫本，小小聲）……這趟旅程，要結束了嗎？"},
+    {spk:"me", text:"嗯，北部是最後一站了。謝謝妳這幾天畫的那些地名筆記，幫了大忙。"},
+    {spk:"other", text:"……（把畫著港邊街景的那頁撕下來遞給他）拿去，當作紀念。你查到的故事，也比我想像中精彩。"},
+    {spk:"me", text:"（接過畫）我會好好收著的。"},
+    {spk:"other", text:"……路上小心。"}],
+    mid:[
+    {spk:"other", text:"（闔上速寫本，小小聲）……你要走了？"},
+    {spk:"me", text:"嗯，接下來要去中部了，謝謝妳這幾天畫的那些地名筆記，幫了大忙。"},
+    {spk:"other", text:"……（把畫著港邊街景的那頁撕下來遞給他）拿去，當作紀念。你查到的故事，記載得比我想像中仔細。"},
+    {spk:"me", text:"（接過畫，收進書裡）我會妥善保存，這也算一份史料。"},
+    {spk:"other", text:"……路上小心。"}]}},
+  poyu:{stranger:{
+    last:[
+    {spk:"other", text:"（總算抬起頭）……你這趟查下來，感想是什麼？"},
+    {spk:"me", text:"這五個地方的地名彼此都對得上，是一份完整的紀錄了。"},
+    {spk:"other", text:"哼，算你有兩把刷子。中部是你最後一站吧？"},
+    {spk:"me", text:"對，接下來我要回去把整份考據重新校對一遍。"},
+    {spk:"other", text:"（難得認真）……辛苦了，回南部路上小心。"}],
+    mid:[
+    {spk:"other", text:"（總算抬起頭）你要走了喔？"},
+    {spk:"me", text:"嗯，接下來去南部了。你資料查得挺快的，改天線上見。"},
+    {spk:"other", text:"哼，算你識貨。走了記得傳訊息，我看看你南部又挖到什麼。"}]},
+    friend:[
+    {spk:"other", text:"（總算抬起頭，愣了一下）妳真的要走喔？教室這幾天沒班長罩，我怎麼辦。"},
+    {spk:"me", text:"哼，我又不是搬走，只是先去南部晃一圈，你少裝可憐。"},
+    {spk:"other", text:"誰裝可憐了……（頓了一下）欸，那段影片妳到底剪完沒？"},
+    {spk:"me", text:"（把手機晃了晃）早就上傳了啦，你自己找時間去看留言，很多人在問你是誰。"},
+    {spk:"other", text:"（嘴角微微上揚）……行，那妳路上小心，攻略打完記得回報進度，我在線上等妳。"}]},
+  sihyu:{stranger:{
+    last:[
+    {spk:"other", text:"（揮手）欸欸，你終於查到最後一站啦？"},
+    {spk:"me", text:"嗯，中部是這趟旅程的最後一站，這幾份地名紀錄，總算齊全了。"},
+    {spk:"other", text:"哇，好厲害！那你要不要順便講給我聽，我剪一支影片幫你宣傳！"},
+    {spk:"me", text:"……有空再說，我得先把資料整理好，不能隨便發布錯誤的內容。"},
+    {spk:"other", text:"好啦好啦，路上小心，回南部要記得休息！"}],
+    mid:[
+    {spk:"other", text:"（揮手）欸欸，要走囉？我影片還沒剪好耶！"},
+    {spk:"me", text:"抱歉，剪好記得傳給我看。我要往南部去了！"},
+    {spk:"other", text:"好啦好啦，路上小心！記得幫我問問南部有沒有什麼厲害的舞步地名！"}]},
+    friend:[
+    {spk:"other", text:"（把手機收進口袋，抬頭看他）欸，你真的要走了喔？"},
+    {spk:"me", text:"嗯，接下來要去南部了，妳剛剛拍的那段記得後製一下，別又拖到截止日。"},
+    {spk:"other", text:"廢話，我可是班長耶，怎麼可能漏氣。倒是你，到了南部別只顧著滑手機查資料，順便幫我物色幾個適合拍片的地名！"},
+    {spk:"me", text:"……看情況啦，不保證。"},
+    {spk:"other", text:"（用力拍他肩膀）路上小心，攻略打完記得回報進度！"}],
+    rival:[
+    {spk:"other", text:"（叉腰，挑眉）喲，妳終於查到最後一站了？我還以為妳會被路邊小吃絆住腳步。"},
+    {spk:"me", text:"呵呵，小吃我當然沒放過，不過地名故事也一個都沒漏掉。"},
+    {spk:"other", text:"哼，算妳有兩下子。不過先講好，今年才藝比賽的舞台，我可不會讓妳。"},
+    {spk:"me", text:"儘管放馬過來，拿手菜跟拿手舞我都準備好了，看誰笑到最後。"},
+    {spk:"other", text:"（笑）那就比賽見真章了。路上小心，回南部要記得顧好妳的攤子！"}]},
+  zihchian:{stranger:[
+    {spk:"other", text:"（闔上書）要走了？"},
+    {spk:"me", text:"對，接下來要往東部去。謝謝你剛才那段文獻，幫了大忙。"},
+    {spk:"other", text:"舉手之勞。到了東部，記得每個說法都要查證清楚，別被口傳故事牽著走。"},
+    {spk:"me", text:"了解，一定會的。"}],
+    friend:[
+    {spk:"other", text:"（闔上手中的書，難得露出一點不捨）妳真的要出發了？"},
+    {spk:"me", text:"嗯，接下來要去東部了，你幫我把攤子的老顧客顧好喔。"},
+    {spk:"other", text:"（推推眼鏡）放心，我會盯著，不會讓阿嬤的招牌被亂改名字。妳呢，東部的碑文記得幫我拍幾張照片回來。"},
+    {spk:"me", text:"（笑）沒問題，我還會順便幫你打聽有沒有更古老的傳說。"},
+    {spk:"other", text:"（點頭）路上小心，別只顧著吃，忘記查證。"}]},
+  wanjhen:{stranger:[
+    {spk:"other", text:"（包了一份米糕塞給他）路上吃，才不會餓肚子。"},
+    {spk:"me", text:"謝啦！等我到了東部，換我找點特別的東西回請妳。"},
+    {spk:"other", text:"呵呵，那我等你的伴手禮囉，一路順風！"}],
+    friend:[
+    {spk:"other", text:"（笑咪咪）子謙，要出發了吼？"},
+    {spk:"me", text:"嗯，接下來要去東部了，這幾天麻煩妳陪我核對那些碑文。"},
+    {spk:"other", text:"呵呵，舉手之勞啦。路上要吃飽，別為了查資料忘記吃飯！"},
+    {spk:"me", text:"知道了，妳也別太累，顧攤子也要記得休息。"},
+    {spk:"other", text:"（用力揮手）路上小心，我等你帶東部的地名故事回來說給我聽！"}],
+    rival:[
+    {spk:"other", text:"（用竹葉包了兩份米糕，遞一份過去）要走了喔？路上吃，別餓著肚子跟人尬舞。"},
+    {spk:"me", text:"（接過米糕，挑眉）謝啦，不過妳這是在幫我加油，還是怕我餓昏比不贏妳？"},
+    {spk:"other", text:"呵呵，兩個都算吧。我等等要去顧攤子，你呢，接下來要去哪？"},
+    {spk:"me", text:"東部啊，順便練幾支新舞步，今年才藝比賽，我可不會讓妳。"},
+    {spk:"other", text:"（笑咪咪揮手）儘管練，我也不會輸的。路上小心，宛真等妳凱旋歸來！"}]},
+  lali:{rival:[
+    {spk:"other", text:"（停下腳步）……你要走了。"},
+    {spk:"me", text:"對啊，最後一站是離島了。這次算我先走一步，下次縣運再分高下。"},
+    {spk:"other", text:"……我會繼續練習的。下次，我不會再輸給你。"},
+    {spk:"me", text:"哈，我等著。路上小心，阿利。"},
+    {spk:"other", text:"……你也是。"}],
+    stranger:[
+    {spk:"other", text:"（停下腳步，看著他）……你要走了。"},
+    {spk:"me", text:"嗯，接下來要去離島了。謝謝你，這幾天陪我走了不少路。"},
+    {spk:"other", text:"……路，是土地自己會帶人走的。你只是剛好，願意慢下來聽。"},
+    {spk:"me", text:"（點頭）我會記得的。你也保重，阿利。"},
+    {spk:"other", text:"……你也是。"}]},
+  kerou:{stranger:[
+    {spk:"other", text:"（大聲揮手）要走了喔？下次再來聽我唱歌！"},
+    {spk:"me", text:"一定，妳的歌聲我可忘不掉。接下來要去離島了。"},
+    {spk:"other", text:"哇，離島！要小心海浪喔，路上小心！"}]},
+  jianlin:{stranger:{
+    last:[
+    {spk:"other", text:"（搔頭）欸，這趟旅程就要結束了齁？"},
+    {spk:"me", text:"對啊，最後一站就是這裡了，謝謝你陪我抓螃蟹查地名。"},
+    {spk:"other", text:"哈，下次你再來，我帶你去更深的潮間帶，保證更好玩！"}],
+    mid:[
+    {spk:"other", text:"（搔頭）欸，你查地名查得比我阿公還仔細耶！"},
+    {spk:"me", text:"每一塊礁石的名字都該有出處，隨口亂猜是對這片海不敬。"},
+    {spk:"other", text:"哈，說得跟真的一樣！那你接下來要去哪？"},
+    {spk:"me", text:"北部，還有幾份舊方志要去比對。"},
+    {spk:"other", text:"路上小心！下次退潮再來，我帶你去更深的潮間帶挖故事！"}]},
+    rival:[
+    {spk:"other", text:"（雙手抱胸，得意地笑）怎樣，本島仔，這次總算見到真人了吧？"},
+    {spk:"me", text:"見到了，跟我想的差不多欠揍。接下來要去北部了，線上再嘴。"},
+    {spk:"other", text:"哼，算你識相先跑。不過老實說……你查資料真的有一套，這次先讓你一分。"},
+    {spk:"me", text:"少來，明明是我贏得比較多。"},
+    {spk:"other", text:"（大喊）下次上線見真章，別想跑！"}]},
+  jiaen:{stranger:[
+    {spk:"other", text:"（闔上剪報本）這趟收穫不少吧。"},
+    {spk:"me", text:"是啊，多虧妳的剪報跟資料，幫了不少忙。"},
+    {spk:"other", text:"……有空的話，把你這趟旅程也寫成一份紀錄給我，我想收進我的地名冊裡。"},
+    {spk:"me", text:"沒問題，一定寄給妳。"}]}
+};
+// 部分「本區同伴」的道別台詞，內容會因為「這一區是不是我這趟旅程的最後一站」
+// 而不同（有沒有下一站、下一站是哪裡）。這類台詞不是單一陣列，而是
+// {last:[...], mid:[...]} 的形式，由 pickFarewellVariant 依 isLastRegion() 判斷
+// 該用哪一版；沒有這種分歧的台詞則維持原本的單一陣列格式，直接使用。
+function pickFarewellVariant(script, region){
+  if (!script || Array.isArray(script)) return script;
+  return (isLastRegion(region.id) ? script.last : script.mid) || script.last || script.mid;
+}
+function buildMainCastFarewellSteps(region){
+  if (!PROTAGONIST_MAIN_INTEGRATED[state.charKey]) return [];
+  const keys = localCompanionKeys(region.id);
+  if (!keys.length) return [];
+  const steps = [];
+  keys.forEach(k=>{
+    const other = CHAR_BY_KEY[k];
+    const rel = relationBetween(state.charKey, k);
+    const entry = PROTAGONIST_FAREWELL[k];
+    const script = pickFarewellVariant(entry && (entry[rel] || entry.stranger || entry.friend || entry.rival), region);
+    if (!script) return;
+    script.forEach(ln=>{
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  });
+  return steps;
+}
+
+// 開啟主角群成員的詳細人物介紹（自己 / 已相遇的其他主角群成員）
+function openProtagonistModal(key){
+  const c = CHAR_BY_KEY[key];
+  if (!c) return;
+  const isSelf = state.charKey === key;
+  const rel = isSelf ? null : relationBetween(state.charKey, key);
+  openModal(
+    (artFor(c.name) ? '<img class="modal-fullart" src="'+artFor(c.name).full+'">' : "")+
+    '<div class="detail-title">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）'+(isSelf?' ★ 你所選擇的角色':'')+'</div>'+
+    '<div class="detail-old">'+escapeHtml(c.school)+(rel?'　'+RELATION_LABEL[rel]:'')+'</div>'+
+    '<div class="detail-body">'+escapeHtml(c.blurb)+
+      '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--paper-line);">'+
+      '<div style="margin-bottom:6px;"><b>🧠 個性：</b>'+escapeHtml(c.persona)+'</div>'+
+      '<div style="margin-bottom:6px;"><b>🎯 喜好：</b>'+escapeHtml(c.hobby)+'</div>'+
+      '<div style="margin-bottom:6px;"><b>💛 好友：</b>'+escapeHtml(c.friend)+'</div>'+
+      '<div><b>🔥 競爭對手：</b>'+escapeHtml(c.rival)+'</div>'+
+      '</div>'+
+    '</div>', {center:true});
+}
+
+
 function buildMainQuestSteps(region){
   let steps = [];
   const first = isFirstRegion(region.id), last = isLastRegion(region.id);
@@ -3409,13 +3715,21 @@ function buildMainQuestSteps(region){
   if (opening.length){ opening[0].scene = region.stops&&region.stops[0]?region.stops[0].sceneEmoji:"🧭"; opening[0].label = region.title; opening[0].bg = regionBg; }
   steps = steps.concat(opening);
   steps.push(pline("greet", {region: region.name}));
+  // 主角群：進入本區主線時，先遇見本區的主角群同伴（依關係互動），再一起上路
+  steps = steps.concat(buildMainCastGreetSteps(region));
   const ctx = {bg: regionBg};
-  region.stops.forEach(stop => { steps = steps.concat(buildStopSteps(stop, region, ctx)); });
-  // 結尾：該區夥伴入隊 →（第一區）柯世安正式登場自我介紹 →（最後一區）全隊大結局
-  let closeLines = filterCastLines(region.closing, region);
-  if (first) closeLines = closeLines.concat(JOURNEY.firstClosing);
-  if (last)  closeLines = closeLines.concat(JOURNEY.lastClosing);
-  const closing = linesToSteps(closeLines, MENTOR);
+  region.stops.forEach((stop, stopIdx) => {
+    steps = steps.concat(buildStopSteps(stop, region, ctx));
+    steps = steps.concat(buildMainCastStopBanter(region, stopIdx));
+  });
+  // 結尾：該區夥伴入隊 → 跟本區主角群同伴道別 →（第一區）柯世安正式登場自我介紹 →（最後一區）全隊大結局
+  const regionCloseSteps = linesToSteps(filterCastLines(region.closing, region), MENTOR);
+  const farewellSteps = buildMainCastFarewellSteps(region);
+  let journeyCloseLines = [];
+  if (first) journeyCloseLines = journeyCloseLines.concat(JOURNEY.firstClosing);
+  if (last)  journeyCloseLines = journeyCloseLines.concat(JOURNEY.lastClosing);
+  const journeyCloseSteps = linesToSteps(journeyCloseLines, MENTOR);
+  const closing = regionCloseSteps.concat(farewellSteps).concat(journeyCloseSteps);
   if (closing.length){ closing[0].scene = "🧭"; closing[0].label = region.title+"・完"; closing[0].bg = regionBg; }
   steps = steps.concat(closing);
   steps.push(pline("clear", {region: region.name}));
@@ -3914,6 +4228,9 @@ function buildChainCard(chain){
 function renderCountyProtagonists(cname){
   const section = document.getElementById("county-protagonists-section");
   section.innerHTML = "";
+  // 已整合進主線劇情的玩家角色（見 buildMainCastGreetSteps／buildMainCastFarewellSteps），
+  // 不再重複顯示這個獨立於主線之外的「遇見主角群」側邊入口，避免互動被重複觸發。
+  if (PROTAGONIST_MAIN_INTEGRATED[state.charKey]) return;
   const keys = (COUNTY_TO_PROTAGONISTS[cname]||[]).filter(k=>k!==state.charKey);
   if (!keys.length) return;
   const title = document.createElement("div");
