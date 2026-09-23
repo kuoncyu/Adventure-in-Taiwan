@@ -1944,7 +1944,163 @@ const MEET_SCRIPTS = {
   }
 };
 
-// 建立「相遇」對話步驟：優先使用專屬好友／競爭對手劇本，否則使用通用初次見面對話
+// ---------------------------------------------------------------------
+// 沒有好友／競爭對手關係的兩人，初次相遇時的專屬劇本（非公版對話）。
+// key 為兩人 key 以「_」相接（依 PLAYER_CHARS 陣列順序排列），
+// 陣列中每句以 spk 標明「實際角色 key」（而非 me/other），
+// 因為同一對劇本無論誰是玩家角色、誰是被遇見的一方，都要能正確顯示。
+// ---------------------------------------------------------------------
+const PAIR_MEET_SCRIPTS = {
+  hanlin_poyu:[
+    {spk:"poyu", text:"（滑著手機頭也不抬）喔，你就是基隆那個運動會常常拿冠軍的？"},
+    {spk:"hanlin", text:"算是啦！你在玩遊戲喔？"},
+    {spk:"poyu", text:"查資料啦，只是介面比較好上手而已。你們基隆的地名故事應該也不少吧？"}],
+  hanlin_sihyu:[
+    {spk:"sihyu", text:"（拍手）欸你是不是基隆運動會那個很會衝的男生！"},
+    {spk:"hanlin", text:"咦，妳怎麼知道！"},
+    {spk:"sihyu", text:"我們老師放轉播影片給全校看啊，你衝線那段超帥的，我都想幫你編舞慶祝了！"}],
+  hanlin_zihchian:[
+    {spk:"zihchian", text:"（推了推眼鏡）聽說你是靠蠻力衝過終點線的，運動很好，但地名典故可不能靠蠻力硬記。"},
+    {spk:"hanlin", text:"哈，我盡量記啦，反正記不熟就衝去問下一個！"},
+    {spk:"zihchian", text:"……你這種態度，遲早會念錯地名鬧笑話。"}],
+  hanlin_wanjhen:[
+    {spk:"wanjhen", text:"（笑咪咪遞出一包米糕）運動完應該餓了吧，來一份？"},
+    {spk:"hanlin", text:"喔喔謝啦！妳人也太好了吧！"},
+    {spk:"wanjhen", text:"呵呵，聽說基隆廟口也有很多好吃的，下次換你帶我去吃！"}],
+  hanlin_kerou:[
+    {spk:"kerou", text:"（開心揮手）你是林承翰對不對！我聽阿利提過你，說你是他的老對手！"},
+    {spk:"hanlin", text:"對啊，我們每年縣運都會碰上，他很難纏。"},
+    {spk:"kerou", text:"他私底下其實有偷偷練習喔，你要小心一點才行！"}],
+  hanlin_jianlin:[
+    {spk:"jianlin", text:"（賊笑）欸，聽說你運動會都用衝的，跟我用滑板一樣快耶！"},
+    {spk:"hanlin", text:"才不一樣，滑板不會喘，我可是會喘的！"},
+    {spk:"jianlin", text:"哈哈，那下次比賽，看誰先喘停。"}],
+  hanlin_jiaen:[
+    {spk:"jiaen", text:"（平靜地打量）你就是那個縣運常常上台領獎的？"},
+    {spk:"hanlin", text:"對啊，妳怎麼知道？"},
+    {spk:"jiaen", text:"剪報上看過，我有整理各縣市小朋友的新聞，你的名字出現過三次。"}],
+  shiaolan_poyu:[
+    {spk:"poyu", text:"（瞄了一眼她手上的筆記本）妳這樣一筆一劃記，效率也太低了吧？"},
+    {spk:"shiaolan", text:"……我喜歡慢慢畫，這樣記得比較牢。"},
+    {spk:"poyu", text:"隨便妳啦，反正結果一樣，只是我比較快而已。"}],
+  shiaolan_sihyu:[
+    {spk:"sihyu", text:"哇，妳的速寫本畫得好細膩喔！可以借我看看嗎？"},
+    {spk:"shiaolan", text:"……可、可以啊，不過畫得不太好。"},
+    {spk:"sihyu", text:"才不會，這比我拍的短影片還有味道，我要跟妳學幾招！"}],
+  shiaolan_zihchian:[
+    {spk:"zihchian", text:"（點頭表示讚許）妳這本觀察日記記得很仔細，看得出來有下功夫。"},
+    {spk:"shiaolan", text:"……謝謝，我只是怕忘記細節。"},
+    {spk:"zihchian", text:"這種態度值得肯定，比某些人用衝的記地名好多了。"}],
+  shiaolan_wanjhen:[
+    {spk:"wanjhen", text:"（好奇湊過來）妳畫的這個是我們台南的小吃攤耶，畫得好像喔！"},
+    {spk:"shiaolan", text:"……我剛剛路過的時候順手畫的，妳認得出來啊。"},
+    {spk:"wanjhen", text:"當然，我對吃的東西過目不忘！要不要我請妳吃看看，順便當寫生模特兒？"}],
+  shiaolan_lali:[
+    {spk:"lali", text:"（安靜地看著她畫畫）……妳畫的路線圖，跟我阿公教我認路的方式很像。"},
+    {spk:"shiaolan", text:"……真的嗎？我只是照著地形畫而已。"},
+    {spk:"lali", text:"……嗯，土地的樣子，其實不需要說太多話。"}],
+  shiaolan_jianlin:[
+    {spk:"jianlin", text:"（湊過來亂翻她的筆記本）欸這頁畫的是什麼，看起來好像一隻螃蟹！"},
+    {spk:"shiaolan", text:"……那是我畫的老街屋簷啦，不是螃蟹！"},
+    {spk:"jianlin", text:"喔喔對不起，我最近抓螃蟹抓到走火入魔，看什麼都像螃蟹。"}],
+  poyu_zihchian:[
+    {spk:"zihchian", text:"（皺眉）你手機一直滑，是在查資料還是在玩？"},
+    {spk:"poyu", text:"都有啦，攻略跟考據其實很像，都是要找對的路徑。"},
+    {spk:"zihchian", text:"……這個比喻，勉強算你有點道理。"}],
+  poyu_wanjhen:[
+    {spk:"wanjhen", text:"（端來一碗）你看起來很累的樣子，吃點東西補充體力吧！"},
+    {spk:"poyu", text:"喔……謝啦，妳人真好，跟我妹一樣愛照顧人。"},
+    {spk:"wanjhen", text:"呵呵，吃飽才有力氣查資料嘛，快趁熱吃！"}],
+  poyu_lali:[
+    {spk:"lali", text:"（打量他手上的裝置）……那個東西，能帶你認路嗎？"},
+    {spk:"poyu", text:"算是啦，地圖跟攻略都在裡面。"},
+    {spk:"lali", text:"……我比較相信自己的腳。不過，也許哪天可以試試看。"}],
+  poyu_kerou:[
+    {spk:"kerou", text:"（好奇）欸你玩的遊戲有沒有唱歌的關卡？我很會唱歌喔！"},
+    {spk:"poyu", text:"呃……應該沒有，不過妳唱歌很厲害的話，可以配我打怪的BGM。"},
+    {spk:"kerou", text:"哈哈好啊，那你打怪的時候我來現場伴唱！"}],
+  poyu_jiaen:[
+    {spk:"jiaen", text:"（翻著剪報）你查資料的速度，比我整理剪報還快。"},
+    {spk:"poyu", text:"習慣了，玩遊戲練出來的手速。"},
+    {spk:"jiaen", text:"……手速快不代表記得住，我剪報都留底，你查完會忘記吧？"}],
+  sihyu_zihchian:[
+    {spk:"zihchian", text:"（皺眉看著她跳舞）妳這樣蹦蹦跳跳，不怕把地名故事跳丟了？"},
+    {spk:"sihyu", text:"才不會，我都用節奏記，唸起來還比較好記呢！"},
+    {spk:"zihchian", text:"……真是奇怪的記憶方式，不過確實比死背有趣一點。"}],
+  sihyu_lali:[
+    {spk:"lali", text:"（看她跳舞看得出神）……妳的動作，跟我們部落的舞步有點像。"},
+    {spk:"sihyu", text:"真的假的！那你教我幾招部落的舞步嘛！"},
+    {spk:"lali", text:"……好啊，下次帶妳去看看真正的豐年祭。"}],
+  sihyu_kerou:[
+    {spk:"kerou", text:"（興奮尖叫）妳跳舞好厲害喔！我唱歌配妳跳舞怎麼樣！"},
+    {spk:"sihyu", text:"太好了，我正缺一個現場配樂的人！"},
+    {spk:"kerou", text:"那我們現在就來一段，把地名故事變成一首歌一支舞怎麼樣！"}],
+  sihyu_jianlin:[
+    {spk:"jianlin", text:"（模仿她的舞步，笨拙地扭動）妳看我跳得怎麼樣！"},
+    {spk:"sihyu", text:"（笑翻）你這是在抓螃蟹嗎，動作也太僵硬了吧！"},
+    {spk:"jianlin", text:"哈哈，被妳發現了，我平常都在潮間帶橫著走的。"}],
+  sihyu_jiaen:[
+    {spk:"jiaen", text:"（冷靜地看她跳完）妳的節奏感很好，剛好跟我蒐集的貝殼排列邏輯有點像。"},
+    {spk:"sihyu", text:"咦，這樣也能扯上關係，妳是認真的嗎？"},
+    {spk:"jiaen", text:"我剪報都會分類整理，妳的舞步應該也可以試著分類看看。"}],
+  zihchian_lali:[
+    {spk:"lali", text:"（點頭）……你讀的書比我阿公的口傳故事還厚。"},
+    {spk:"zihchian", text:"文獻要嚴謹考證，不能只靠口耳相傳。"},
+    {spk:"lali", text:"……但有些事情，書上不會寫。土地會記得。"}],
+  zihchian_kerou:[
+    {spk:"kerou", text:"（好奇湊過來）你在下棋喔？可以教我嗎？"},
+    {spk:"zihchian", text:"下棋要靜下心，妳這麼愛唱歌，恐怕坐不住。"},
+    {spk:"kerou", text:"哼，我唱歌的時候超專心的好不好，等我贏你再說！"}],
+  zihchian_jianlin:[
+    {spk:"jianlin", text:"（賊笑）欸子謙，聽說你查地名比查案還認真？"},
+    {spk:"zihchian", text:"地名跟案件一樣，都需要證據，不能隨便下結論。"},
+    {spk:"jianlin", text:"好啦好啦，那你要不要跟我一起去抓螃蟹，順便找證據？"}],
+  zihchian_jiaen:[
+    {spk:"jiaen", text:"（翻著自己的剪報本）我們的做事方法很像，都喜歡把東西記錄下來。"},
+    {spk:"zihchian", text:"妳說得對，資料整理確實需要耐心。"},
+    {spk:"jiaen", text:"如果你不介意，我可以把整理方法跟你交換一下心得。"}],
+  wanjhen_lali:[
+    {spk:"lali", text:"（看著她手上的米糕）……這個，跟我阿嬤做的糯米糕有點像。"},
+    {spk:"wanjhen", text:"真的嗎？要不要吃吃看，順便告訴我你阿嬤的做法！"},
+    {spk:"lali", text:"……好啊，下次帶妳去部落，讓阿嬤教妳。"}],
+  wanjhen_kerou:[
+    {spk:"kerou", text:"（聞香而來）好香喔，這是妳做的嗎？"},
+    {spk:"wanjhen", text:"對啊，要不要嚐嚐看？我最喜歡看大家吃得開心的表情。"},
+    {spk:"kerou", text:"太好了，我唱首歌謝謝妳，就當作是我的謝禮！"}],
+  wanjhen_jianlin:[
+    {spk:"jianlin", text:"（伸手想偷拿）欸這個看起來好好吃，可以偷咬一口嗎？"},
+    {spk:"wanjhen", text:"（笑）想吃就直接說嘛，不用偷的，來一份給你！"},
+    {spk:"jianlin", text:"哈哈，妳人真好，下次我請妳吃我釣到的魚，如果我沒先自己烤來吃的話。"}],
+  wanjhen_jiaen:[
+    {spk:"jiaen", text:"（仔細觀察）妳做點心的手法很細心，跟我整理剪報的邏輯滿像的。"},
+    {spk:"wanjhen", text:"咦，做點心跟剪報也能有關係喔？"},
+    {spk:"jiaen", text:"都需要按部就班，急不得。你這個步驟，我要記下來。"}],
+  lali_jianlin:[
+    {spk:"jianlin", text:"（模仿溯溪姿勢）欸阿利，你溯溪厲害還是我抓螃蟹厲害？"},
+    {spk:"lali", text:"……不一樣的事，沒得比。"},
+    {spk:"jianlin", text:"好啦好啦，那我們去溪邊抓螃蟹好了，剛好兩個都能比！"}],
+  lali_jiaen:[
+    {spk:"jiaen", text:"（冷靜地）聽說你認路很厲害，靠什麼方法？"},
+    {spk:"lali", text:"……看山的形狀，聽溪水的聲音。不是用看的。"},
+    {spk:"jiaen", text:"有意思，我都是靠剪報跟筆記，也許可以試試你的方法。"}],
+  kerou_jianlin:[
+    {spk:"jianlin", text:"（哼著跑調的歌）欸可柔，我這樣唱得怎麼樣！"},
+    {spk:"kerou", text:"（摀耳朵笑）你這是在嚇跑潮間帶的螃蟹吧！"},
+    {spk:"jianlin", text:"哈哈，那我以後唱歌前先問螃蟹同不同意。"}],
+  kerou_jiaen:[
+    {spk:"jiaen", text:"（安靜聽她唱完）妳的歌聲跟我蒐集的海浪聲錄音，節奏滿像的。"},
+    {spk:"kerou", text:"真的嗎？那你要不要錄下來，我們可以合作一首歌！"},
+    {spk:"jiaen", text:"……可以考慮，但我得先確認錄音品質。"}]
+};
+function pairScriptKey(k1, k2){
+  const order = PLAYER_CHARS.map(c=>c.key);
+  const i1 = order.indexOf(k1), i2 = order.indexOf(k2);
+  return (i1 < i2) ? (k1+"_"+k2) : (k2+"_"+k1);
+}
+
+// 建立「相遇」對話步驟：優先使用專屬好友／競爭對手劇本，
+// 其次使用該對角色專屬的初次見面劇本（PAIR_MEET_SCRIPTS），
+// 兩者皆無才會退回最通用的萬用初次見面對話（理論上不會發生）。
 function buildMeetSteps(otherKey){
   const other = CHAR_BY_KEY[otherKey];
   const county = PROTAGONIST_HOME_COUNTY[otherKey] || "";
@@ -1952,9 +2108,15 @@ function buildMeetSteps(otherKey){
   const steps = [];
   steps.push({type:"line", speaker:"旁白", text:"你在"+county+"，意外遇見了同樣在探尋地名記憶的「"+other.name+"」。", scene:other.icon});
   const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
+  const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
   if (script){
     script.forEach(ln=>{
       if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else if (pairScript){
+    pairScript.forEach(ln=>{
+      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
       else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
     });
   } else {
@@ -1993,11 +2155,13 @@ function openProtagonistModal(key){
     (artFor(c.name) ? '<img class="modal-fullart" src="'+artFor(c.name).full+'">' : "")+
     '<div class="detail-title">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）'+(isSelf?' ★ 你所選擇的角色':'')+'</div>'+
     '<div class="detail-old">'+escapeHtml(c.school)+(rel?'　'+RELATION_LABEL[rel]:'')+'</div>'+
-    '<div class="detail-body">'+escapeHtml(c.blurb)+'<br><br>'+
-      '<b>個性：</b>'+escapeHtml(c.persona)+'<br>'+
-      '<b>喜好：</b>'+escapeHtml(c.hobby)+'<br>'+
-      '<b>好友：</b>'+escapeHtml(c.friend)+'<br>'+
-      '<b>競爭對手：</b>'+escapeHtml(c.rival)+
+    '<div class="detail-body">'+escapeHtml(c.blurb)+
+      '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--paper-line);">'+
+      '<div style="margin-bottom:6px;"><b>🧠 個性：</b>'+escapeHtml(c.persona)+'</div>'+
+      '<div style="margin-bottom:6px;"><b>🎯 喜好：</b>'+escapeHtml(c.hobby)+'</div>'+
+      '<div style="margin-bottom:6px;"><b>💛 好友：</b>'+escapeHtml(c.friend)+'</div>'+
+      '<div><b>🔥 競爭對手：</b>'+escapeHtml(c.rival)+'</div>'+
+      '</div>'+
     '</div>', {center:true});
 }
 
@@ -3859,13 +4023,13 @@ function drawCodexGrid(){
 
 // ---------- 人物（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴）----------
 function renderPeopleScreen(){
-  renderProtagonistCodex();
-  renderGuideCodex();
-  renderCompanionCodex();
+  renderProtagonistCodex(document.getElementById("protagonist-codex-grid"), document.getElementById("protagonist-codex-count"));
+  renderGuideCodex(document.getElementById("guide-codex-grid"), document.getElementById("guide-codex-count"));
+  renderCompanionCodex(document.getElementById("companion-codex-grid"), document.getElementById("companion-codex-count"));
 }
 
-function renderProtagonistCodex(){
-  const grid = document.getElementById("protagonist-codex-grid");
+// grid / countEl 可傳入任意容器（例如彈窗內的暫時容器），預設仍為「人物」畫面本身的容器
+function renderProtagonistCodex(grid, countEl){
   grid.innerHTML = "";
   let metCount = 0;
   PLAYER_CHARS.forEach(c=>{
@@ -3892,12 +4056,11 @@ function renderProtagonistCodex(){
     }
     grid.appendChild(card);
   });
-  document.getElementById("protagonist-codex-count").textContent =
+  countEl.textContent =
     "已認識 "+metCount+" ／ 全台共 "+PLAYER_CHARS.length+" 位主角群成員";
 }
 
-function renderGuideCodex(){
-  const grid = document.getElementById("guide-codex-grid");
+function renderGuideCodex(grid, countEl){
   grid.innerHTML = "";
   const keys = Object.keys(COUNTY_GUIDES);
   let metCount = 0;
@@ -3923,13 +4086,12 @@ function renderGuideCodex(){
     }
     grid.appendChild(card);
   });
-  document.getElementById("guide-codex-count").textContent =
+  countEl.textContent =
     "已認識 "+metCount+" ／ 全台共 "+keys.length+" 位在地嚮導"+
     (metCount>=10 ? "（已解鎖已探索地區的隨機測驗！）" : "（再認識 "+(10-metCount)+" 位即可解鎖「已探索地區隨機測驗」）");
 }
 
-function renderCompanionCodex(){
-  const grid = document.getElementById("companion-codex-grid");
+function renderCompanionCodex(grid, countEl){
   grid.innerHTML = "";
   const roster = [MENTOR].concat(Object.values(COMPANIONS));
   let metCount = 0;
@@ -3954,7 +4116,7 @@ function renderCompanionCodex(){
     }
     grid.appendChild(card);
   });
-  document.getElementById("companion-codex-count").textContent =
+  countEl.textContent =
     "已加入 "+metCount+" ／ 全台共 "+roster.length+" 位隨行夥伴";
 }
 
@@ -4141,29 +4303,33 @@ function openPlayerInfoModal(){
   });
 }
 
-// 前往「人物」畫面；若目前劇情尚未播完，先確認是否中斷
+// 前往「人物」：若目前劇情尚未播完，直接以彈窗顯示已蒐集人物圖鑑（不中斷、不跳離目前劇情）；
+// 若不在劇情中，則正常切換到「人物」主畫面。
 function goToPeopleScreen(){
   if (!isDialogueActive()){
     setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people");
     return;
   }
+  openPeopleGalleryModal();
+}
+
+// 以彈窗呈現完整人物圖鑑（主角群／各縣市嚮導／隨行夥伴），關閉後直接回到原本畫面（不影響劇情播放進度）
+function openPeopleGalleryModal(){
   const back = openModal(
-    '<div class="detail-title">離開目前劇情</div>'+
-    '<div class="detail-body">目前劇情尚未播放完畢，前往人物將會中斷這段對話。建議先點上方 💾 取得存檔代碼，之後可用「讀取存檔代碼」繼續旅程。確定要離開嗎？</div>'+
-    '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
-      '<button class="brass-btn ghost small" id="people-leave-cancel">取消</button>'+
-      '<button class="brass-btn small" id="people-leave-confirm">確定離開</button>'+
-    '</div>'
+    '<div class="detail-title">🧑‍🤝‍🧑 已蒐集人物</div>'+
+    '<div class="codex-subtitle" style="margin-top:0;">🧑‍🤝‍🧑 主角群</div>'+
+    '<div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="pm-protagonist-count"></div>'+
+    '<div class="codex-grid" id="pm-protagonist-grid"></div>'+
+    '<div class="codex-subtitle">🧭 各縣市嚮導</div>'+
+    '<div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="pm-guide-count"></div>'+
+    '<div class="codex-grid" id="pm-guide-grid"></div>'+
+    '<div class="codex-subtitle">🎒 隨行夥伴</div>'+
+    '<div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="pm-companion-count"></div>'+
+    '<div class="codex-grid" id="pm-companion-grid"></div>'
     , {center:true});
-  back.querySelector("#people-leave-cancel").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
-  back.querySelector("#people-leave-confirm").addEventListener("click", ()=>{
-    sfx("click"); back.remove();
-    if (typing){ clearInterval(typing); typing = null; }
-    dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
-    curSceneBg = null;
-    const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
-    setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people");
-  });
+  renderProtagonistCodex(back.querySelector("#pm-protagonist-grid"), back.querySelector("#pm-protagonist-count"));
+  renderGuideCodex(back.querySelector("#pm-guide-grid"), back.querySelector("#pm-guide-count"));
+  renderCompanionCodex(back.querySelector("#pm-companion-grid"), back.querySelector("#pm-companion-count"));
 }
 
 // ---------- 自由挑戰區 ----------
@@ -4403,7 +4569,7 @@ document.getElementById("btn-about").addEventListener("click", ()=>{
     '<div style="margin-top:10px;font-size:.8rem;line-height:1.9;color:var(--ink-text);text-align:left;">'+
       '<div>遊戲製作設計：郭柏宏</div>'+
       '<div>版本號：20260923</div>'+
-      '<div style="margin-top:6px;">首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台574則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
+      '<div style="margin-top:6px;">致謝詞：首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台574則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
     '</div>'
     , {center:true});
 });
