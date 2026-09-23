@@ -326,6 +326,36 @@ body{
 .codex-card .cx-name{font-family:var(--serif);font-weight:700;color:var(--paper);}
 .codex-card .cx-old{font-size:.75rem;color:var(--gold-lt);}
 
+/* ---------- 縣市探索頁：遇見主角群 ---------- */
+.meet-list{display:flex;flex-direction:column;gap:10px;margin-top:6px;margin-bottom:18px;}
+.meet-card{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;
+  background:rgba(255,255,255,.04);border:1px solid rgba(176,134,63,.25);border-left:4px solid var(--mist);
+}
+.meet-card:active{background:rgba(255,255,255,.09);}
+.meet-card.met{border-left-color:var(--jade-lt);}
+.meet-card .mv-ava{
+  width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--paper);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;
+}
+.meet-card .mv-ava img{width:100%;height:100%;object-fit:cover;}
+.meet-card .mv-body{flex:1;min-width:0;}
+.meet-card .mv-name{font-family:var(--serif);font-weight:700;color:var(--paper);font-size:.92rem;}
+.meet-card .mv-sub{font-size:.72rem;color:var(--mist);margin-top:2px;}
+.meet-card .mv-tag{flex-shrink:0;font-size:.7rem;padding:3px 9px;border-radius:20px;white-space:nowrap;font-family:var(--serif);}
+.meet-card .mv-tag.friend{background:rgba(123,169,140,.25);color:var(--jade-lt);}
+.meet-card .mv-tag.rival{background:rgba(194,90,46,.25);color:#e08a5e;}
+.meet-card .mv-tag.stranger{background:rgba(255,255,255,.08);color:var(--mist);}
+
+/* ---------- 人物圖鑑：分類標題 ---------- */
+.codex-subtitle{font-family:var(--serif);font-weight:700;color:var(--gold-lt);font-size:.88rem;margin:16px 0 6px;}
+.codex-subtitle:first-child{margin-top:0;}
+.codex-card.self{border-left-color:var(--seal-lt);}
+.codex-card .cx-relation{font-size:.68rem;margin-top:2px;}
+.codex-card .cx-relation.friend{color:var(--jade-lt);}
+.codex-card .cx-relation.rival{color:#e08a5e;}
+
 /* ---------- 底部導覽 ---------- */
 .bottom-nav{
   position:fixed;left:0;right:0;bottom:0;max-width:920px;margin:0 auto;
@@ -588,6 +618,8 @@ body{
 
   <div id="county-flagship-section"></div>
 
+  <div id="county-protagonists-section"></div>
+
   <div class="section-title" style="font-size:1rem;">🗺️ 主線任務鏈</div>
   <div class="chain-list" id="county-main-chains"></div>
 
@@ -600,7 +632,7 @@ body{
   <div class="section-title" id="codex-title">📖 地名圖鑑</div>
   <div class="codex-tabs" style="display:flex;gap:8px;margin-bottom:10px;">
     <button class="brass-btn ghost small" id="codex-tab-places">📖 地名圖鑑</button>
-    <button class="brass-btn ghost small" id="codex-tab-guides">🧭 嚮導圖鑑</button>
+    <button class="brass-btn ghost small" id="codex-tab-guides">🧑‍🤝‍🧑 人物圖鑑</button>
   </div>
   <div id="codex-places-pane">
     <div class="codex-toolbar">
@@ -611,8 +643,17 @@ body{
     <div class="codex-grid" id="codex-grid"></div>
   </div>
   <div id="codex-guides-pane" class="hidden">
+    <div class="codex-subtitle">🧑‍🤝‍🧑 主角群</div>
+    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="protagonist-codex-count"></div>
+    <div class="codex-grid" id="protagonist-codex-grid"></div>
+
+    <div class="codex-subtitle">🧭 各縣市嚮導</div>
     <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="guide-codex-count"></div>
     <div class="codex-grid" id="guide-codex-grid"></div>
+
+    <div class="codex-subtitle">🎒 隨行夥伴</div>
+    <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="companion-codex-count"></div>
+    <div class="codex-grid" id="companion-codex-grid"></div>
   </div>
 </div>
 
@@ -1768,90 +1809,456 @@ const CHAR_BY_KEY = {};
 PLAYER_CHARS.forEach(c => CHAR_BY_KEY[c.key] = c);
 
 // ---------------------------------------------------------------------
+// 主角群互動：每位主角的「家鄉縣市」（同校兩人共用一個縣市）
+// 玩家旅行到該縣市時，除了自己選的角色，另一位（或兩位）主角群成員
+// 會以「在地相遇」NPC 的身分出現，可互動對話，但不會加入隊伍隨行。
+// ---------------------------------------------------------------------
+const PROTAGONIST_HOME_COUNTY = {
+  hanlin:"基隆市", shiaolan:"基隆市",
+  poyu:"台中市", sihyu:"台中市",
+  zihchian:"台南市", wanjhen:"台南市",
+  lali:"花蓮縣", kerou:"花蓮縣",
+  jianlin:"澎湖縣", jiaen:"澎湖縣"
+};
+const COUNTY_TO_PROTAGONISTS = {};
+Object.keys(PROTAGONIST_HOME_COUNTY).forEach(k=>{
+  const cty = PROTAGONIST_HOME_COUNTY[k];
+  (COUNTY_TO_PROTAGONISTS[cty] = COUNTY_TO_PROTAGONISTS[cty]||[]).push(k);
+});
+
+// 判斷「我」與「對方」的關係：好友／競爭對手／初次見面（雙向檢查兩邊各自寫的 friend／rival 敘述）
+function relationBetween(meKey, otherKey){
+  const me = CHAR_BY_KEY[meKey], other = CHAR_BY_KEY[otherKey];
+  if (!me || !other) return "stranger";
+  if ((me.friend && me.friend.indexOf(other.name)!==-1) || (other.friend && other.friend.indexOf(me.name)!==-1)) return "friend";
+  if ((me.rival && me.rival.indexOf(other.name)!==-1) || (other.rival && other.rival.indexOf(me.name)!==-1)) return "rival";
+  return "stranger";
+}
+const RELATION_LABEL = {friend:"💛 好友", rival:"🔥 競爭對手", stranger:"🌱 初次見面"};
+
+// 各主角在「好友／競爭對手」關係下，與各種對象相遇時的專屬對話（其餘一律走通用的初次見面對話）
+// 陣列中的每一句：spk="other" 由被遇見的主角說；spk="me" 由玩家所選角色說
+const MEET_SCRIPTS = {
+  hanlin: {
+    friend:[
+      {spk:"other", text:"欸！！你不是應該在教室畫你的觀察日記嗎？怎麼也跑基隆來了！"},
+      {spk:"me", text:"還不是因為你，說要來就自己先跑了。"},
+      {spk:"other", text:"嘿嘿，畢竟基隆是我的主場啊！走，我帶你去吃廟口甜不辣，順便講幾個你筆記本裡漏掉的地名！"}],
+    rival:[
+      {spk:"other", text:"（瞪大眼睛）……你、你怎麼會出現在我的地盤！"},
+      {spk:"me", text:"旅行到這裡而已，別緊張，我沒打算跟你比賽。"},
+      {spk:"other", text:"哼，隨便你怎麼說，反正下次縣運，我一定會贏回一千五百公尺的冠軍！"}]
+  },
+  shiaolan: {
+    friend:[
+      {spk:"other", text:"（小小聲，但抬眼笑了）……你先跑去哪了，我在你家巷口等好久。"},
+      {spk:"me", text:"抱歉抱歉，路上看到一攤新開的鹹酥雞就走不動了。"},
+      {spk:"other", text:"……算了，反正你一定又忘記要記筆記。我把你剛剛講的地名都寫下來了，這本借你抄。"}],
+    rival:[
+      {spk:"other", text:"（推了推書包背帶，小聲卻認真）……你也來了？"},
+      {spk:"me", text:"嗯，聽說這裡的地名故事很多，剛好可以拿來當作文材料。"},
+      {spk:"other", text:"……那我們就各自蒐集，下次比賽再見真章。我不會輸給你的。"}]
+  },
+  poyu: {
+    friend:[
+      {spk:"other", text:"（頭也不抬，繼續滑手機）喔，妳來啦。想也知道妳會來查勤。"},
+      {spk:"me", text:"少廢話，你作業寫了沒？"},
+      {spk:"other", text:"寫、寫了啦……欸不過妳看，這個地名的由來說法根本跟攻略有八成像，我等等講給妳聽。"}],
+    rival:[
+      {spk:"other", text:"（瞇眼看向對方）……等等，你該不會就是那個『線上嘴我三年』的傢伙？"},
+      {spk:"me", text:"哈，終於見到本人了，本島仔。"},
+      {spk:"other", text:"別叫我本島仔！算了，正好，線下也讓你見識一下我查資料的速度。"}]
+  },
+  sihyu: {
+    friend:[
+      {spk:"other", text:"（一把抓住對方的手）你來得正好！幫我拍一段跳舞的影片啦！"},
+      {spk:"me", text:"喂喂，我才剛到耶……好啦好啦，拍就拍。"},
+      {spk:"other", text:"就知道你嘴上念，手還是很乖！走，順便去問問這附近的地名，晚點當我的影片旁白。"}],
+    rival:[
+      {spk:"other", text:"（挑眉，帶點笑意）喲，怎麼換妳離開台南跑來我地盤了？"},
+      {spk:"me", text:"我來查地名資料，順便看看你的舞跳得怎樣。"},
+      {spk:"other", text:"哼，看好了，今年才藝比賽的第一名，我不會再讓給妳。"}]
+  },
+  zihchian: {
+    friend:[
+      {spk:"other", text:"（合上手中的書）妳怎麼跑來這裡了？"},
+      {spk:"me", text:"我來找你啊，順便看看你又挖到什麼碑文。"},
+      {spk:"other", text:"正好，我剛查到一段舊方志的記載，跟妳做的米糕攤地名故事對得上，妳一定會有興趣。"}]
+  },
+  wanjhen: {
+    friend:[
+      {spk:"other", text:"（笑咪咪端出一碗米糕）你也來了？剛好我做了新口味，你嚐嚐。"},
+      {spk:"me", text:"（接過碗）謝了。話說我查到一段資料，跟妳最近在問的老攤子有關。"},
+      {spk:"other", text:"真的嗎？太好了，我最喜歡聽你講這些典故了，快說快說！"}],
+    rival:[
+      {spk:"other", text:"（笑容不減，但眼神認真了一點）妳也來台南了？"},
+      {spk:"me", text:"當然啊，我可不會讓你一個人在南部稱王。"},
+      {spk:"other", text:"呵呵，那今年才藝比賽，我的拿手米糕表演，妳可要小心點。"}]
+  },
+  lali: {
+    friend:[
+      {spk:"other", text:"（難得露出笑意）……妳怎麼一個人跑來這裡。"},
+      {spk:"me", text:"我來找你啊，而且你都不回訊息！"},
+      {spk:"other", text:"……抱歉，剛剛在山上收訊不好。走吧，我帶妳去看一個很少人知道的地方。"}],
+    rival:[
+      {spk:"other", text:"（停下腳步，語氣平淡卻認真）……又見面了。"},
+      {spk:"me", text:"哈，這次我先聲明，下次縣運我不會再讓你贏。"},
+      {spk:"other", text:"……我等著。"}]
+  },
+  kerou: {
+    friend:[
+      {spk:"other", text:"（開心大喊）你怎麼會在這裡！"},
+      {spk:"me", text:"（有點被嚇到）我、我來找妳的啊，妳嗓門還是這麼大。"},
+      {spk:"other", text:"嘿嘿，被你發現了！走走走，我帶你去聽部落老人家講古，超精彩的！"}],
+    rival:[
+      {spk:"other", text:"（眼睛一亮）欸，你是不是上次鄉土語文競賽跟我同組的那個？"},
+      {spk:"me", text:"（愣了一下）……對，我記得妳。"},
+      {spk:"other", text:"太好了，那這次也讓我聽聽你唸的地名故事，看看誰唸得比較有味道！"}]
+  },
+  jianlin: {
+    friend:[
+      {spk:"other", text:"（一臉心虛）你來得正好，剛剛那件事妳千萬別跟老師說……"},
+      {spk:"me", text:"（嘆氣）你又做了什麼好事？"},
+      {spk:"other", text:"沒事沒事，就……去查了一下退潮才能到的礁石。走，我補償妳，帶妳去看更酷的地方！"}],
+    rival:[
+      {spk:"other", text:"（瞇眼）等等……你的頭像我認得，你不會就是那個線上一直嘴我的『本島仔』對面本人吧！"},
+      {spk:"me", text:"哈，見面比想像中矮嘛。"},
+      {spk:"other", text:"你才矮！哼，算了，反正這次我一定要查得比你多。"}]
+  },
+  jiaen: {
+    friend:[
+      {spk:"other", text:"（面無表情地看著對方）……你又闖禍了對不對，我看你臉就知道。"},
+      {spk:"me", text:"（乾笑）沒有啦，只是想帶妳去看個好東西而已。"},
+      {spk:"other", text:"……好，但這次出事我不負責善後。走吧。"}],
+    rival:[
+      {spk:"other", text:"（慢半拍地點頭）……好久不見。"},
+      {spk:"me", text:"嗯，好久不見。這次的作文比賽，我不會輸的。"},
+      {spk:"other", text:"……我也是。不過在那之前，要不要先聽聽我蒐集的地名故事？"}]
+  }
+};
+
+// 建立「相遇」對話步驟：優先使用專屬好友／競爭對手劇本，否則使用通用初次見面對話
+function buildMeetSteps(otherKey){
+  const other = CHAR_BY_KEY[otherKey];
+  const county = PROTAGONIST_HOME_COUNTY[otherKey] || "";
+  const rel = relationBetween(state.charKey, otherKey);
+  const steps = [];
+  steps.push({type:"line", speaker:"旁白", text:"你在"+county+"，意外遇見了同樣在探尋地名記憶的「"+other.name+"」。", scene:other.icon});
+  const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
+  if (script){
+    script.forEach(ln=>{
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+    });
+  } else {
+    steps.push({type:"line", speaker:other.name, icon:other.icon,
+      text:"你好，我是"+other.name+"，大家都叫我「"+other.nick+"」。"+other.persona});
+    steps.push({type:"line", speaker:playerName(), icon:playerIcon(), isPlayer:true,
+      text:"你好，我是"+playerName()+"，也是來這裡尋找地名記憶的旅人。"});
+    steps.push({type:"line", speaker:other.name, icon:other.icon,
+      text:"是嗎？我平常喜歡"+other.hobby+"。如果你也對這裡的地名有興趣，我們可以算半個同好！"});
+  }
+  return steps;
+}
+
+function playMeetProtagonist(otherKey){
+  const steps = buildMeetSteps(otherKey);
+  playSequence(steps, ()=>{
+    if (!state.metProtagonists[otherKey]){
+      state.metProtagonists[otherKey] = true;
+      state.loreScore += 1;
+      renderTopbar();
+      const other = CHAR_BY_KEY[otherKey];
+      toast("👥 已認識 "+other.icon+" "+other.name);
+    }
+    renderCountyScreen(currentCounty);
+    showScreen("county");
+  });
+}
+
+// 開啟主角群成員的詳細人物介紹（自己 / 已相遇的其他主角群成員）
+function openProtagonistModal(key){
+  const c = CHAR_BY_KEY[key];
+  if (!c) return;
+  const isSelf = state.charKey === key;
+  const rel = isSelf ? null : relationBetween(state.charKey, key);
+  openModal(
+    (artFor(c.name) ? '<img class="modal-portrait" src="'+artFor(c.name).face+'">' : "")+
+    '<div class="detail-title">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）'+(isSelf?' ★ 你所選擇的角色':'')+'</div>'+
+    '<div class="detail-old">'+escapeHtml(c.school)+(rel?'　'+RELATION_LABEL[rel]:'')+'</div>'+
+    '<div class="detail-body">'+escapeHtml(c.blurb)+'<br><br>'+
+      '<b>個性：</b>'+escapeHtml(c.persona)+'<br>'+
+      '<b>喜好：</b>'+escapeHtml(c.hobby)+'<br>'+
+      '<b>好友：</b>'+escapeHtml(c.friend)+'<br>'+
+      '<b>競爭對手：</b>'+escapeHtml(c.rival)+
+    '</div>', {center:true});
+}
+
+// ---------------------------------------------------------------------
 // 主角語氣庫：依角色 voice 挑選，讓每位主角的台詞都有一點點不同
 // greet=初次同行／arrive=抵達新地點／curious=聽完介紹的追問
 // yokai=忘名妖出現／right=答對之後／clear=完成一個區域
 // ---------------------------------------------------------------------
 const VOICE_LINES = {
-  bold:{
-    greet:["交給我啦！我跑得快，全島跑一圈也沒問題！","哇——真的假的？那還等什麼，出發出發！"],
-    arrive:["這裡就是下一個地方喔？看起來超有故事的！","到了到了！我先衝一步——欸，等等我啊！"],
-    curious:["哇，原來是這樣！那我以前唸的完全搞錯了耶！","等一下等一下，這個我要記起來，回去講給同學聽！"],
-    yokai:["喂！那團霧在亂講話！我才不會被你騙到咧！","少來這套！騙人的故事我一聽就知道！"],
-    right:["嘿嘿，答對了吧！我就說我有在聽！","呼——中了！這種感覺跟投進三分球一樣爽！"],
-    clear:["這一區搞定！下一站在哪？我體力還很多！","一口氣跑完一整區，我覺得我還可以再來十個地方！"]
+  "bold": {
+    "greet": [
+      "交給我啦！「{region}」這麼大，我跑一圈也沒問題！",
+      "哇——「{region}」到了？那還等什麼，出發出發！"
+    ],
+    "arrive": [
+      "「{place}」？光聽名字就想知道由來了，走吧！",
+      "到了到了，這裡就是「{place}」喔？看起來超有故事的！"
+    ],
+    "curious": [
+      "哇，原來「{place}」是這樣來的！我以前唸的完全搞錯了耶！",
+      "「{place}」的故事這麼精彩，我要記起來回去講給同學聽！"
+    ],
+    "yokai": [
+      "喂！你亂講「{place}」的故事！我才不會被你騙到咧！",
+      "少來這套！「{place}」才不是你說的那樣！"
+    ],
+    "right": [
+      "嘿嘿，「{place}」這題我答對了吧！我就說我有在聽！",
+      "呼——中了！記住「{place}」的感覺跟投進三分球一樣爽！"
+    ],
+    "clear": [
+      "「{region}」搞定！下一站在哪？我體力還很多！",
+      "一口氣跑完「{region}」，我覺得我還可以再來十個地方！"
+    ]
   },
-  shy:{
-    greet:["那個……我、我會盡力的。請多指教……","嗯……我可能話不多，但我會把每件事都記下來。"],
-    arrive:["（小聲）這裡……好像跟我課本上畫的不太一樣。","我先……把這裡的樣子畫下來，可以嗎？"],
-    curious:["原來……名字裡藏著這麼多事情啊……","我、我可以問一個問題嗎？那後來的人為什麼要改掉它呢……"],
-    yokai:["（握緊筆記本）它在說謊……我本子上寫的不是那樣。","雖然我很怕……但這一次，我想自己回答。"],
-    right:["……太好了。我沒有記錯。","（小小地鬆了一口氣）原來我也可以答對呢……"],
-    clear:["這一區的筆記，滿滿寫了好幾頁……謝謝大家。","我好像……沒有那麼怕開口說話了。"]
+  "shy": {
+    "greet": [
+      "那個……「{region}」我、我會盡力查清楚的。",
+      "嗯……「{region}」話題我可能不多，但我會把每件事都記下來。"
+    ],
+    "arrive": [
+      "（小聲）「{place}」……好像跟我課本上畫的不太一樣。",
+      "我先……把「{place}」的樣子畫下來，可以嗎？"
+    ],
+    "curious": [
+      "原來「{place}」的名字裡藏著這麼多事情啊……",
+      "我、我可以問一個問題嗎？「{place}」後來的人為什麼要改掉它呢……"
+    ],
+    "yokai": [
+      "（握緊筆記本）它在說謊……我本子上寫的「{place}」不是那樣。",
+      "雖然我很怕……但「{place}」這一次，我想自己回答。"
+    ],
+    "right": [
+      "……太好了，「{place}」我沒有記錯。",
+      "（小小地鬆了一口氣）原來「{place}」我也能答對呢……"
+    ],
+    "clear": [
+      "「{region}」的筆記，滿滿寫了好幾頁……謝謝大家。",
+      "走過「{region}」，我好像沒有那麼怕開口說話了。"
+    ]
   },
-  snark:{
-    greet:["所以這是一款現實世界的收集型RPG？可以，我喜歡。","行吧，只要別叫我早起，我都可以配合。"],
-    arrive:["場景切換完成。下一個NPC在哪裡？","地圖點亮了一格——這進度條也太慢了吧。"],
-    curious:["等等，所以那個名字是被『覆蓋存檔』了？也太慘。","冷知識+1。這如果出在期末考我一定會寫。"],
-    yokai:["這台詞也太假了吧，連我手遊裡的小怪都比你會編。","哦？要嘴砲是不是？你找錯人了。"],
-    right:["嗯，通關。難度大概三顆星。","看吧，攻略我早就看完了——我是說，資料我早就看完了。"],
-    clear:["這一區全清。成就解鎖，可喜可賀。","進度存個檔吧，我不想再重跑一次。"]
+  "snark": {
+    "greet": [
+      "所以「{region}」是這款現實世界收集型RPG的下一張地圖？可以，我喜歡。",
+      "行吧，只要「{region}」別叫我早起，我都可以配合。"
+    ],
+    "arrive": [
+      "場景切換完成，「{place}」，下一個NPC在哪裡？",
+      "地圖點亮「{place}」這一格——進度條也太慢了吧。"
+    ],
+    "curious": [
+      "等等，所以「{place}」這個名字是被『覆蓋存檔』了？也太慘。",
+      "冷知識+1：「{place}」。這如果出在期末考我一定會寫。"
+    ],
+    "yokai": [
+      "這台詞也太假了吧，連我手遊裡的小怪都比你會編「{place}」的故事。",
+      "哦？要在「{place}」嘴砲是不是？你找錯人了。"
+    ],
+    "right": [
+      "嗯，「{place}」通關，難度大概三顆星。",
+      "看吧，「{place}」的攻略我早就看完了——我是說，資料我早就看完了。"
+    ],
+    "clear": [
+      "「{region}」全清，成就解鎖，可喜可賀。",
+      "「{region}」進度存個檔吧，我不想再重跑一次。"
+    ]
   },
-  lively:{
-    greet:["耶！那我們就是探險隊了對不對？我當隊長好不好！","太好玩了吧！我要把這趟旅程全部拍下來！"],
-    arrive:["哇，這裡的光線好漂亮，超適合當背景的！","到新地方囉！大家先來個合照嘛～"],
-    curious:["欸，這個名字唸起來好有節奏喔，像一段副歌！","原來是這個意思！我可以把它編進舞裡嗎？"],
-    yokai:["喂，霧霧的那一位，你節奏亂掉囉！","假的假的！我聽得出來你在亂編！"],
-    right:["答對啦——！來，跟我一起轉一圈慶祝！","太棒了！這一段我要記進我的旅行影片裡！"],
-    clear:["這一區完美收工！下一站在哪裡，我已經等不及了！","我覺得我們可以出一支影片了，標題就叫《拾憶者出發》！"]
+  "lively": {
+    "greet": [
+      "耶！「{region}」我們就是探險隊了對不對？我當隊長好不好！",
+      "太好玩了吧！「{region}」這趟我要全部拍下來！"
+    ],
+    "arrive": [
+      "哇，「{place}」這裡的光線好漂亮，超適合當背景的！",
+      "到「{place}」囉！大家先來個合照嘛～"
+    ],
+    "curious": [
+      "欸，「{place}」這個名字唸起來好有節奏喔，像一段副歌！",
+      "原來「{place}」是這個意思！我可以把它編進舞裡嗎？"
+    ],
+    "yokai": [
+      "喂，霧霧的那一位，你講「{place}」的節奏亂掉囉！",
+      "假的假的！「{place}」才不是你亂編的那樣！"
+    ],
+    "right": [
+      "「{place}」答對啦——！來，跟我一起轉一圈慶祝！",
+      "太棒了！「{place}」這一段我要記進我的旅行影片裡！"
+    ],
+    "clear": [
+      "「{region}」完美收工！下一站在哪裡，我已經等不及了！",
+      "走完「{region}」，我覺得可以出一支影片了，標題就叫《拾憶者出發》！"
+    ]
   },
-  stern:{
-    greet:["我明白了。既然是查證，就該有查證的規矩。","請放心，我不會隨便下結論，也不會放過任何一個錯誤。"],
-    arrive:["先確認地點與年代，再談故事——這是基本順序。","此地我在書上讀過，但親自站在這裡，感覺完全不同。"],
-    curious:["那麼，最早的文獻是怎麼記載的呢？","若是兩種說法並存，那就不該只講其中一種。"],
-    yokai:["請住口。沒有依據的說法，不該被當成故事講出去。","你的說法漏洞百出，我一條一條說給你聽。"],
-    right:["這才是應有的答案。","查證過後才說出口——我會一直這樣做的。"],
-    clear:["這一區的記載，總算補齊了。","記住一個地名，就是對住在那裡的人的一份尊重。"]
+  "stern": {
+    "greet": [
+      "我明白了，「{region}」既然是查證，就該有查證的規矩。",
+      "請放心，「{region}」我不會隨便下結論，也不會放過任何一個錯誤。"
+    ],
+    "arrive": [
+      "先確認「{place}」的地點與年代，再談故事——這是基本順序。",
+      "「{place}」我在書上讀過，但親自站在這裡，感覺完全不同。"
+    ],
+    "curious": [
+      "那麼，「{place}」最早的文獻是怎麼記載的呢？",
+      "若「{place}」有兩種說法並存，那就不該只講其中一種。"
+    ],
+    "yokai": [
+      "請住口，「{place}」沒有依據的說法，不該被當成故事講出去。",
+      "你對「{place}」的說法漏洞百出，我一條一條說給你聽。"
+    ],
+    "right": [
+      "這才是「{place}」應有的答案。",
+      "查證過後才說出口——「{place}」我會一直這樣做的。"
+    ],
+    "clear": [
+      "「{region}」的記載，總算補齊了。",
+      "記住「{region}」的一個地名，就是對住在那裡的人的一份尊重。"
+    ]
   },
-  gentle:{
-    greet:["請多指教喔，我會好好聽大家說話的。","那我來記筆記好了，順便準備點心給大家吃。"],
-    arrive:["這裡的味道好特別，一定有很多人的生活痕跡。","先跟這塊土地打個招呼——我阿嬤都是這樣教的。"],
-    curious:["原來這個名字是這樣來的呀，好溫柔的故事。","那當年住在這裡的人，是抱著什麼心情取這個名字的呢？"],
-    yokai:["不可以這樣喔，你這樣會讓真的故事不見的。","我不生氣，但我要把正確的故事講回來。"],
-    right:["太好了，這個故事沒有被弄丟。","呼——我有好好記住呢。"],
-    clear:["這一區的故事，都好好收在心裡了。","回去以後，我要把這些說給阿嬤聽。"]
+  "gentle": {
+    "greet": [
+      "請多指教喔，「{region}」的事我會好好聽大家說。",
+      "那我來記筆記好了，「{region}」順便準備點心給大家吃。"
+    ],
+    "arrive": [
+      "「{place}」的味道好特別，一定有很多人的生活痕跡。",
+      "先跟「{place}」這塊土地打個招呼——我阿嬤都是這樣教的。"
+    ],
+    "curious": [
+      "原來「{place}」這個名字是這樣來的呀，好溫柔的故事。",
+      "那當年住在「{place}」的人，是抱著什麼心情取這個名字的呢？"
+    ],
+    "yokai": [
+      "不可以這樣喔，你這樣會讓「{place}」真的故事不見的。",
+      "我不生氣，但「{place}」的正確故事，我要講回來。"
+    ],
+    "right": [
+      "太好了，「{place}」這個故事沒有被弄丟。",
+      "呼——「{place}」我有好好記住呢。"
+    ],
+    "clear": [
+      "「{region}」的故事，都好好收在心裡了。",
+      "回去以後，我要把「{region}」的故事說給阿嬤聽。"
+    ]
   },
-  quiet:{
-    greet:["嗯。我跟著。","路我來帶。跟緊。"],
-    arrive:["……到了。","風的味道不一樣了。這裡是新的地方。"],
-    curious:["原來如此。","名字是祖先留下的記號——阿公說過。"],
-    yokai:["你講的不是真的。","……閉嘴。我聽過真正的故事。"],
-    right:["嗯。記住了。","這個名字，我會帶回部落說給大家聽。"],
-    clear:["這一片土地，記住了。","走吧。下一座山還在等。"]
+  "quiet": {
+    "greet": [
+      "嗯。「{region}」我跟著。",
+      "「{region}」的路我來帶。跟緊。"
+    ],
+    "arrive": [
+      "……到了，「{place}」。",
+      "風的味道不一樣了。「{place}」是新的地方。"
+    ],
+    "curious": [
+      "原來如此，「{place}」。",
+      "名字是祖先留下的記號——阿公說過，「{place}」也是。"
+    ],
+    "yokai": [
+      "你講的「{place}」不是真的。",
+      "……閉嘴。我聽過「{place}」真正的故事。"
+    ],
+    "right": [
+      "嗯，「{place}」記住了。",
+      "這個名字，我會把「{place}」帶回部落說給大家聽。"
+    ],
+    "clear": [
+      "「{region}」這片土地，記住了。",
+      "走吧。「{region}」之後，下一座山還在等。"
+    ]
   },
-  cheerful:{
-    greet:["哈囉～我來啦！一路上我可以一直唱歌嗎？","放心啦，有我在，再遠的路都不會無聊！"],
-    arrive:["哇——這裡好美喔！我想在這邊唱一首歌！","新地方新地方！我先跟大家說聲你好～"],
-    curious:["原來是這個意思喔！唸起來好好聽耶！","那族語裡面，是不是也有一樣的說法呀？"],
-    yokai:["欸——你不要亂講啦！這樣土地會難過耶！","我阿嬤講的版本才不是這樣！"],
-    right:["答對了耶——！我要唱一首歌慶祝！","哈哈，我就知道我有記住！"],
-    clear:["這一區走完了！心情好到想大聲唱歌！","下次我要帶阿嬤一起來，再聽一次這些故事。"]
+  "cheerful": {
+    "greet": [
+      "哈囉～「{region}」我來啦！一路上我可以一直唱歌嗎？",
+      "放心啦，有我在，「{region}」再遠的路都不會無聊！"
+    ],
+    "arrive": [
+      "哇——「{place}」好美喔！我想在這邊唱一首歌！",
+      "「{place}」新地方新地方！我先跟大家說聲你好～"
+    ],
+    "curious": [
+      "原來「{place}」是這個意思喔！唸起來好好聽耶！",
+      "那族語裡面，「{place}」是不是也有一樣的說法呀？"
+    ],
+    "yokai": [
+      "欸——你不要亂講「{place}」啦！這樣土地會難過耶！",
+      "我阿嬤講的「{place}」版本才不是這樣！"
+    ],
+    "right": [
+      "「{place}」答對了耶——！我要唱一首歌慶祝！",
+      "哈哈，「{place}」我就知道我有記住！"
+    ],
+    "clear": [
+      "「{region}」走完了！心情好到想大聲唱歌！",
+      "下次我要帶阿嬤一起來「{region}」，再聽一次這些故事。"
+    ]
   },
-  mischief:{
-    greet:["聽起來很好玩！可是如果無聊我就要去釣魚囉？","嘿嘿，找失蹤的名字？這個我最會了！"],
-    arrive:["這裡看起來……好像可以爬上去耶。","我先去前面探個路——放心啦，我很少受傷！"],
-    curious:["蛤？真的假的？那我以前一直叫錯耶，哈哈哈！","原來背後有這種故事喔，超酷的，我要拿去嚇嘉恩。"],
-    yokai:["哇！說謊說得那麼順，你是不是練過啊？","我從小聽阿公唬爛長大，你這招對我沒用啦！"],
-    right:["哈！中啦！我就說我運氣超好——是實力，是實力！","猜……啊不是，是推理出來的！"],
-    clear:["這一區被我們玩透啦！下一區在哪裡？","我要把這些故事寫在滑板底下，超帥的。"]
+  "mischief": {
+    "greet": [
+      "聽起來很好玩！「{region}」如果無聊我就要去釣魚囉？",
+      "嘿嘿，「{region}」找失蹤的名字？這個我最會了！"
+    ],
+    "arrive": [
+      "「{place}」這裡看起來……好像可以爬上去耶。",
+      "我先去「{place}」前面探個路——放心啦，我很少受傷！"
+    ],
+    "curious": [
+      "蛤？「{place}」真的假的？那我以前一直叫錯耶，哈哈哈！",
+      "原來「{place}」背後有這種故事喔，超酷的，我要拿去嚇嘉恩。"
+    ],
+    "yokai": [
+      "哇！「{place}」說謊說得那麼順，你是不是練過啊？",
+      "我從小聽阿公唬爛「{place}」長大，你這招對我沒用啦！"
+    ],
+    "right": [
+      "哈！「{place}」中啦！我就說我運氣超好——是實力，是實力！",
+      "猜……啊不是，「{place}」是推理出來的！"
+    ],
+    "clear": [
+      "「{region}」被我們玩透啦！下一區在哪裡？",
+      "我要把「{region}」的故事寫在滑板底下，超帥的。"
+    ]
   },
-  calm:{
-    greet:["我明白了。那我負責整理我們查到的東西。","嗯，我會把每一段都記下來，之後才好對照。"],
-    arrive:["先觀察，再發問——這樣比較不會被誤導。","這個地方，我在剪報上看過。親眼看到果然不一樣。"],
-    curious:["那也就是說，名字其實記錄了當時的生活方式。","如果有兩種說法，我們就兩種都記下來吧。"],
-    yokai:["你的說法前後矛盾，我不接受。","慌張沒有用。我們只要把證據攤開就好。"],
-    right:["嗯，跟我筆記上的一致。","很好，這一則可以確定了。"],
-    clear:["這一區整理完畢，我的地名冊又厚了一些。","回去以後，我要把這些補進我的本子裡。"]
+  "calm": {
+    "greet": [
+      "我明白了，「{region}」那我負責整理我們查到的東西。",
+      "嗯，「{region}」我會把每一段都記下來，之後才好對照。"
+    ],
+    "arrive": [
+      "先觀察「{place}」，再發問——這樣比較不會被誤導。",
+      "「{place}」這個地方，我在剪報上看過。親眼看到果然不一樣。"
+    ],
+    "curious": [
+      "那也就是說，「{place}」的名字其實記錄了當時的生活方式。",
+      "如果「{place}」有兩種說法，我們就兩種都記下來吧。"
+    ],
+    "yokai": [
+      "你對「{place}」的說法前後矛盾，我不接受。",
+      "慌張沒有用，「{place}」我們只要把證據攤開就好。"
+    ],
+    "right": [
+      "嗯，「{place}」跟我筆記上的一致。",
+      "很好，「{place}」這一則可以確定了。"
+    ],
+    "clear": [
+      "「{region}」整理完畢，我的地名冊又厚了一些。",
+      "回去以後，我要把「{region}」補進我的本子裡。"
+    ]
   }
 };
 
@@ -2552,13 +2959,14 @@ let state = {
   party: [],            // companion keys
   seenIntro: false,
   challengeBest: 0,
-  metGuides: {}          // guideKey -> true，已認識的縣市在地嚮導
+  metGuides: {},         // guideKey -> true，已認識的縣市在地嚮導
+  metProtagonists: {}    // charKey -> true，已相遇的其他主角群成員
 };
 
 function resetState(){
   state = { playerName:"旅人", charKey:null, gender:null, homeRegion:"north",
             discovered:{}, loreScore:0, regionDone:{}, party:[], seenIntro:false, challengeBest:0,
-            metGuides:{} };
+            metGuides:{}, metProtagonists:{} };
 }
 
 // 目前主角 / 顯示名稱
@@ -2744,12 +3152,17 @@ function speakerInfo(key){
 }
 
 // 取一句符合主角個性的台詞（kind: greet/arrive/curious/yokai/right/clear）
-function pline(kind){
+function pline(kind, ctx){
   const c = curChar();
   const v = (c && VOICE_LINES[c.voice]) ? VOICE_LINES[c.voice] : VOICE_LINES.bold;
   const pool = v[kind] && v[kind].length ? v[kind] : (v.curious || ["……"]);
+  let text = pool[Math.floor(Math.random()*pool.length)];
+  if (ctx){
+    if (ctx.place) text = text.split("{place}").join(ctx.place);
+    if (ctx.region) text = text.split("{region}").join(ctx.region);
+  }
   return { type:"line", speaker: playerName(), icon: playerIcon(),
-           text: pool[Math.floor(Math.random()*pool.length)], isPlayer:true };
+           text: text, isPlayer:true };
 }
 function isPlayerSpeaker(name){ return name === playerName(); }
 
@@ -2783,19 +3196,23 @@ function buildStopSteps(stop, region, ctx){
     const nar = sceneNarration(sc, stop.placeId);
     if (nar){ nar.scene = stop.sceneEmoji; steps.push(nar); }
   }
+  // 這一站的地名（供主角反應台詞代入，讓吐槽/驚呼真正對應到這個地名，而非罐頭句）
+  const placeInfo = placesData[stop.placeId];
+  const placeName = placeInfo ? placeInfo.n : "這裡";
+  const pctx = {place: placeName};
   // 主角抵達時先開口
-  const arrive = pline("arrive"); arrive.scene = stop.sceneEmoji; arrive.bg = sc;
+  const arrive = pline("arrive", pctx); arrive.scene = stop.sceneEmoji; arrive.bg = sc;
   steps.push(arrive);
   pages.forEach(p => steps.push(p));
   // 聽完介紹後的反應／追問
-  steps.push(pline("curious"));
+  steps.push(pline("curious", pctx));
   if (stop.interference){
     steps.push({type:"line", speaker:"忘名妖", icon:"🌫️", text:stop.interference[0], sfx:"yokai"});
-    steps.push(pline("yokai"));
+    steps.push(pline("yokai", pctx));
     steps.push({type:"line", speaker:stop.npcName, icon:stop.npcIcon, text:stripPrefix(stop.interference[1], stop.npcName)});
   }
   steps.push({type:"quiz", quiz:stop.quiz, placeId:stop.placeId, npcName:stop.npcName, npcIcon:stop.npcIcon});
-  steps.push(pline("right"));
+  steps.push(pline("right", pctx));
   if (stop.afterQuiz){
     linesToSteps(filterCastLines(stop.afterQuiz, region), fb).forEach(s=>steps.push(s));
   }
@@ -2819,7 +3236,7 @@ function buildMainQuestSteps(region){
   const regionBg = REGION_BG[region.id] || "field";
   if (opening.length){ opening[0].scene = region.stops&&region.stops[0]?region.stops[0].sceneEmoji:"🧭"; opening[0].label = region.title; opening[0].bg = regionBg; }
   steps = steps.concat(opening);
-  steps.push(pline("greet"));
+  steps.push(pline("greet", {region: region.name}));
   const ctx = {bg: regionBg};
   region.stops.forEach(stop => { steps = steps.concat(buildStopSteps(stop, region, ctx)); });
   // 結尾：該區夥伴入隊 →（第一區）柯世安正式登場自我介紹 →（最後一區）全隊大結局
@@ -2829,7 +3246,7 @@ function buildMainQuestSteps(region){
   const closing = linesToSteps(closeLines, MENTOR);
   if (closing.length){ closing[0].scene = "🧭"; closing[0].label = region.title+"・完"; closing[0].bg = regionBg; }
   steps = steps.concat(closing);
-  steps.push(pline("clear"));
+  steps.push(pline("clear", {region: region.name}));
   const nxt = nextRegionName(region.id);
   if (nxt){
     steps.push({type:"line", speaker:MENTOR.name, icon:MENTOR.icon,
@@ -3042,7 +3459,8 @@ function buildChainSteps(chain){
   const chainBg = stopScene(chain.stops[0]);
   const openText = stripPrefix(chain.opening, persona.name);
   steps.push({type:"line", speaker:persona.name, icon:persona.icon, text:openText, scene:persona.icon, label:chain.title, bg:chainBg});
-  steps.push(pline("arrive"));
+  const firstPlace = placesData[chain.stops[0].placeId];
+  steps.push(pline("arrive", {place: firstPlace ? firstPlace.n : "這裡"}));
   let lastBg = chainBg;
   chain.stops.forEach(stop => {
     const sc = stopScene(stop);
@@ -3056,9 +3474,11 @@ function buildChainSteps(chain){
       if (i===0){ s.scene = stop.sceneEmoji; s.bg = sc; }
       steps.push(s);
     });
-    steps.push(pline("curious"));
+    const placeInfo = placesData[stop.placeId];
+    const pctx = {place: placeInfo ? placeInfo.n : "這裡"};
+    steps.push(pline("curious", pctx));
     steps.push({type:"quiz", quiz:stop.quiz, placeId:stop.placeId, npcName:stop.npcName, npcIcon:stop.npcIcon});
-    steps.push(pline("right"));
+    steps.push(pline("right", pctx));
   });
   const closeText = stripPrefix(chain.closing, persona.name);
   steps.push({type:"line", speaker:persona.name, icon:persona.icon, text:closeText});
@@ -3281,6 +3701,40 @@ function buildChainCard(chain){
   return card;
 }
 
+// 縣市探索頁：遇見主角群（同縣市的其他主角群成員，不會隨行，只待在該縣市）
+function renderCountyProtagonists(cname){
+  const section = document.getElementById("county-protagonists-section");
+  section.innerHTML = "";
+  const keys = (COUNTY_TO_PROTAGONISTS[cname]||[]).filter(k=>k!==state.charKey);
+  if (!keys.length) return;
+  const title = document.createElement("div");
+  title.className = "section-title"; title.style.fontSize = "1rem";
+  title.textContent = "👥 遇見主角群";
+  section.appendChild(title);
+  const list = document.createElement("div");
+  list.className = "meet-list";
+  keys.forEach(k=>{
+    const c = CHAR_BY_KEY[k];
+    const met = !!state.metProtagonists[k];
+    const rel = relationBetween(state.charKey, k);
+    const art = artFor(c.name);
+    const card = document.createElement("div");
+    card.className = "meet-card"+(met?" met":"");
+    card.innerHTML =
+      '<div class="mv-ava">'+(art?'<img src="'+art.face+'">':c.icon)+'</div>'+
+      '<div class="mv-body"><div class="mv-name">'+c.icon+' '+escapeHtml(c.name)+'（'+escapeHtml(c.nick)+'）</div>'+
+      '<div class="mv-sub">'+(met?"已相遇・"+escapeHtml(c.school):"在此地就讀，尚未相遇")+'</div></div>'+
+      '<div class="mv-tag '+rel+'">'+RELATION_LABEL[rel]+'</div>';
+    card.addEventListener("click", ()=>{
+      sfx("click");
+      if (met) openProtagonistModal(k);
+      else playMeetProtagonist(k);
+    });
+    list.appendChild(card);
+  });
+  section.appendChild(list);
+}
+
 function renderCountyScreen(cname){
   setBgmRegion(regionOf[cname]);
   currentCounty = cname;
@@ -3316,6 +3770,8 @@ function renderCountyScreen(cname){
     });
     flagSection.appendChild(grid);
   }
+
+  renderCountyProtagonists(cname);
 
   const cc = COUNTY_CONTENT[cname] || {mainChains:[], sideQuests:[]};
 
@@ -3404,7 +3860,7 @@ function showCodexTab(tab){
   if (tab === "guides"){
     placesPane.classList.add("hidden"); guidesPane.classList.remove("hidden");
     tabGuides.classList.remove("ghost"); tabPlaces.classList.add("ghost");
-    renderGuideCodex();
+    renderCharacterCodex();
   } else {
     guidesPane.classList.add("hidden"); placesPane.classList.remove("hidden");
     tabPlaces.classList.remove("ghost"); tabGuides.classList.add("ghost");
@@ -3412,6 +3868,41 @@ function showCodexTab(tab){
 }
 document.getElementById("codex-tab-places").addEventListener("click", ()=>showCodexTab("places"));
 document.getElementById("codex-tab-guides").addEventListener("click", ()=>showCodexTab("guides"));
+
+// ---------- 人物圖鑑（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴）----------
+function renderCharacterCodex(){
+  renderProtagonistCodex();
+  renderGuideCodex();
+  renderCompanionCodex();
+}
+
+function renderProtagonistCodex(){
+  const grid = document.getElementById("protagonist-codex-grid");
+  grid.innerHTML = "";
+  let metCount = 0;
+  PLAYER_CHARS.forEach(c=>{
+    const isSelf = state.charKey === c.key;
+    const met = isSelf || !!state.metProtagonists[c.key];
+    if (met) metCount++;
+    const card = document.createElement("div");
+    card.className = "codex-card"+(met?"":" locked")+(isSelf?" self":"");
+    if (met){
+      const rel = isSelf ? null : relationBetween(state.charKey, c.key);
+      card.innerHTML = '<div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
+        '<div class="cx-name">'+c.icon+' '+escapeHtml(c.name)+(isSelf?' ★':'')+'</div>'+
+        '<div class="cx-old">'+(isSelf?"你所選擇的角色":escapeHtml(c.nick))+'</div>'+
+        (rel?'<div class="cx-relation '+rel+'">'+RELATION_LABEL[rel]+'</div>':'');
+      card.style.cursor = "pointer";
+      card.addEventListener("click", ()=> openProtagonistModal(c.key));
+    } else {
+      card.innerHTML = '<div class="cx-county">'+escapeHtml(PROTAGONIST_HOME_COUNTY[c.key]||"")+'</div>'+
+        '<div class="cx-name">？？？</div><div class="cx-old">尚未相遇</div>';
+    }
+    grid.appendChild(card);
+  });
+  document.getElementById("protagonist-codex-count").textContent =
+    "已認識 "+metCount+" ／ 全台共 "+PLAYER_CHARS.length+" 位主角群成員";
+}
 
 function renderGuideCodex(){
   const grid = document.getElementById("guide-codex-grid");
@@ -3443,13 +3934,41 @@ function renderGuideCodex(){
     (metCount>=10 ? "（已解鎖已探索地區的隨機測驗！）" : "（再認識 "+(10-metCount)+" 位即可解鎖「已探索地區隨機測驗」）");
 }
 
+function renderCompanionCodex(){
+  const grid = document.getElementById("companion-codex-grid");
+  grid.innerHTML = "";
+  const roster = [MENTOR].concat(Object.values(COMPANIONS));
+  let metCount = 0;
+  roster.forEach(g=>{
+    const met = g.key === "mentor" ? true : (state.party.indexOf(g.key) >= 0);
+    if (met) metCount++;
+    const card = document.createElement("div");
+    card.className = "codex-card"+(met?"":" locked");
+    if (met){
+      card.innerHTML = '<div class="cx-county">隨行夥伴</div>'+
+        '<div class="cx-name">'+g.icon+' '+escapeHtml(g.name)+'</div><div class="cx-old">'+escapeHtml(g.title||"")+'</div>';
+      card.style.cursor = "pointer";
+      card.addEventListener("click", ()=> openModal(
+        (artFor(g.name) ? '<img class="modal-portrait" src="'+artFor(g.name).face+'">' : "")+
+        '<div class="detail-title">'+g.icon+' '+escapeHtml(g.name)+'</div>'+
+        '<div class="detail-old">'+escapeHtml(g.title||"隨行夥伴")+'</div>'+
+        '<div class="detail-body">'+escapeHtml(g.desc||"")+'</div>', {center:true}));
+    } else {
+      card.innerHTML = '<div class="cx-county">隨行夥伴</div><div class="cx-name">？？？</div><div class="cx-old">尚未加入</div>';
+    }
+    grid.appendChild(card);
+  });
+  document.getElementById("companion-codex-count").textContent =
+    "已加入 "+metCount+" ／ 全台共 "+roster.length+" 位隨行夥伴";
+}
+
 // ---------- 存讀檔 ----------
 function serializeSave(){
   const payload = {
     v:2, playerName:state.playerName, charKey:state.charKey, gender:state.gender, homeRegion:state.homeRegion,
     discovered:Object.keys(state.discovered).map(Number),
     loreScore:state.loreScore, regionDone:state.regionDone, party:state.party, seenIntro:state.seenIntro,
-    challengeBest:state.challengeBest, metGuides:state.metGuides
+    challengeBest:state.challengeBest, metGuides:state.metGuides, metProtagonists:state.metProtagonists
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 }
@@ -3467,6 +3986,7 @@ function loadSaveCode(code){
     state.seenIntro = !!payload.seenIntro;
     state.challengeBest = payload.challengeBest||0;
     state.metGuides = payload.metGuides||{};
+    state.metProtagonists = payload.metProtagonists||{};
     return true;
   }catch(e){ return false; }
 }
