@@ -3663,14 +3663,23 @@ function buildGuideMeetSteps(gk){
   if (!g) return [];
   const name = playerName(), icon = playerIcon();
   return [
-    {type:"line", speaker:"旁白", text:"你剛踏進"+g.county+"，一位對這裡瞭若指掌的人主動朝你走了過來。", scene:g.icon},
+    {type:"line", speaker:"旁白", text:"羅盤的指針在踏入"+g.county+"的那一刻，忽然轉得又急又快——這裡的灰霧似乎比其他地方更濃一些。", scene:g.icon},
+    {type:"line", speaker:"旁白", text:"你還來不及看清四周，一個聲音已經從不遠處傳來。"},
     {type:"line", speaker:g.name, icon:g.icon,
-      text:"嘿，你就是那個到處在問地名故事的旅人吧？我叫"+g.name+"，大家都叫我「"+g.title+"」。"},
+      text:"喂、喂！你手上那個一直轉的東西……是羅盤吧？我還沒看過它轉得這麼兇的。"},
+    {type:"line", speaker:name, icon:icon, isPlayer:true,
+      text:"你認得羅盤？我是"+name+"，正在幫忙找回被忘名妖弄亂的地名記憶。"},
+    {type:"line", speaker:g.name, icon:g.icon,
+      text:"忘名妖……難怪。這陣子"+g.county+"這一帶的灰霧真的變濃了，連老一輩講的古早地名都開始被講得亂七八糟。我叫"+g.name+"，大家都叫我「"+g.title+"」。"},
     {type:"line", speaker:g.name, icon:g.icon, text:g.desc},
     {type:"line", speaker:name, icon:icon, isPlayer:true,
-      text:"你好，我是"+name+"，正在"+g.county+"尋找被忘名妖弄亂的地名記憶。"},
+      text:"那真是太好了——你願意帶我認識這裡的地方嗎？我對"+g.county+"還不太熟。"},
     {type:"line", speaker:g.name, icon:g.icon,
-      text:"這裡的路我熟，地名背後的故事我也略知一二。放心，接下來這段我陪你走——想知道的，儘管問。"}
+      text:"當然沒問題！這裡的路我熟得很，地名背後藏著什麼故事、哪些說法是忘名妖亂編的，我大概都能分辨一二。"},
+    {type:"line", speaker:name, icon:icon, isPlayer:true,
+      text:"那就拜託你了，"+g.name+"。"},
+    {type:"line", speaker:g.name, icon:g.icon,
+      text:"別客氣，走吧——趁灰霧還沒把故事全吃掉之前，我們把它們一個一個找回來。"}
   ];
 }
 
