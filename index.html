@@ -3656,22 +3656,45 @@ function buildChainSteps(chain){
   return steps;
 }
 
+// 建立「初次遇見該縣市在地嚮導」的見面之詞與自我介紹對話，
+// 讓嚮導的登場不會顯得太唐突。之後再進入同一縣市就不會重複播放。
+function buildGuideMeetSteps(gk){
+  const g = COUNTY_GUIDES[gk];
+  if (!g) return [];
+  const name = playerName(), icon = playerIcon();
+  return [
+    {type:"line", speaker:"旁白", text:"你剛踏進"+g.county+"，一位對這裡瞭若指掌的人主動朝你走了過來。", scene:g.icon},
+    {type:"line", speaker:g.name, icon:g.icon,
+      text:"嘿，你就是那個到處在問地名故事的旅人吧？我叫"+g.name+"，大家都叫我「"+g.title+"」。"},
+    {type:"line", speaker:g.name, icon:g.icon, text:g.desc},
+    {type:"line", speaker:name, icon:icon, isPlayer:true,
+      text:"你好，我是"+name+"，正在"+g.county+"尋找被忘名妖弄亂的地名記憶。"},
+    {type:"line", speaker:g.name, icon:g.icon,
+      text:"這裡的路我熟，地名背後的故事我也略知一二。放心，接下來這段我陪你走——想知道的，儘管問。"}
+  ];
+}
+
 function playChain(county, kind, idx){
   setBgmRegion(regionOf[county]);
   const cc = COUNTY_CONTENT[county];
   if (!cc) return;
   const chain = (kind==="main" ? cc.mainChains : cc.sideQuests)[idx];
   if (!chain) return;
-  // 首次遇到該縣市的在地嚮導：記錄進圖鑑，並提示玩家
+  // 首次遇到該縣市的在地嚮導：先播放一段見面之詞與自我介紹，再進入本次劇情，
+  // 播放結束後才記錄進圖鑑並提示玩家（避免登場太唐突）；已認識過的嚮導則不再重複。
   const gk = COUNTY_TO_GUIDE[county];
-  if (gk && !state.metGuides[gk]){
-    state.metGuides[gk] = true;
-    const g = COUNTY_GUIDES[gk];
-    toast("🧭 認識了新的在地嚮導：" + g.name + "（" + g.county + "）");
-  }
+  const isFirstGuideMeet = !!(gk && !state.metGuides[gk]);
   setChapterLabel(chain.title);
-  const steps = buildChainSteps(chain);
+  let steps = buildChainSteps(chain);
+  if (isFirstGuideMeet){
+    steps = buildGuideMeetSteps(gk).concat(steps);
+  }
   playSequence(steps, () => {
+    if (isFirstGuideMeet){
+      state.metGuides[gk] = true;
+      const g = COUNTY_GUIDES[gk];
+      toast("🧭 認識了新的在地嚮導：" + g.name + "（" + g.county + "）");
+    }
     setChapterLabel("");
     renderCountyScreen(county);
     showScreen("county");
