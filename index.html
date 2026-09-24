@@ -3064,6 +3064,9 @@ let state = {
   party: [],            // companion keys
   seenIntro: false,
   challengeBest: 0,
+  challengeBestBy: {},   // 題數 -> 該題數的最高答對數
+  challengeBoards: {},   // 題數 -> 排行榜紀錄陣列（依完成時間排序）
+  challengeSeq: 0,       // 紀錄流水號（同時間時，號碼小者＝先達成）
   metGuides: {},         // guideKey -> true，已認識的縣市在地嚮導
   metProtagonists: {}    // charKey -> true，已相遇的其他主角群成員
 };
@@ -3071,6 +3074,7 @@ let state = {
 function resetState(){
   state = { playerName:"旅人", charKey:null, gender:null, homeRegion:"north",
             discovered:{}, loreScore:0, regionDone:{}, party:[], seenIntro:false, challengeBest:0,
+            challengeBestBy:{}, challengeBoards:{}, challengeSeq:0,
             metGuides:{}, metProtagonists:{} };
 }
 
@@ -3850,7 +3854,8 @@ PLAYER_MAIN_SCRIPTS.poyu.north = { errand:[
   ["hanlin","咦，你在跟誰報告？這麼認真！"],
   ["me","……班長。不回她，她會一直傳貼圖轟炸我。"],
   ["shiaolan","……（小小聲）有人在等你回報，很好。"],
-  ["me","（螢幕亮起）……她回了：『辛苦了，回台中請你吃冰。』……嘖。"]]};
+  ["me","（螢幕亮起）……她回了：『辛苦了，回台中請你吃冰。』……嘖。"],
+  ["me","（另一則訊息跳出）……影片也剪好了，還附一句：『這次後製有做喔，班長不漏氣。』"]]};
 PLAYER_MAIN_SCRIPTS.sihyu = { north:{ errand:[
   ["me","（舉起手機）柏宇要我攻略打完回報進度，來，拍給他看！五個區域全破！"],
   ["hanlin","哇，全破！我也要入鏡！"],
@@ -3860,13 +3865,17 @@ PLAYER_MAIN_SCRIPTS.hanlin.island = { errand:[
   ["me","（翻開小嵐塞給我的筆記本）她說路上要記東西……我每一區都寫了，字醜，但一個都沒漏！"],
   ["jiaen","……（瞄了一眼）字很大，但重點抓得對。"],
   ["jianlin","哈哈，這頁的媽祖畫得像螃蟹！"],
-  ["me","那是媽祖！我很認真畫的！回基隆第一件事，就是還給小嵐，順便請她吃廟口甜不辣。"]]};
+  ["me","那是媽祖！我很認真畫的！回基隆第一件事，就是還給小嵐，順便請她吃廟口甜不辣。"],
+  ["me","（手機叮咚）黃思妤把影片傳來了！我入鏡三秒，還被剪成慢動作衝刺！"],
+  ["jianlin","哇，慢動作衝刺！這比我的滑板影片還帥！"]]};
 PLAYER_MAIN_SCRIPTS.shiaolan.island = { errand:[
   ["me","……（手機震動）林承翰傳來照片。他把我借他的筆記本抄完了，說回基隆就還我。"],
   ["jianlin","（湊過來）哇，這頁畫的是什麼？看起來像一隻螃蟹！"],
   ["me","……那是基隆廟口的屋簷。他畫的。"],
   ["jiaen","……他的字比妳差，但抄得很完整。"],
-  ["me","……（小小聲）回去，他要請我吃甜不辣，才算還清。"]]};
+  ["me","……（小小聲）回去，他要請我吃甜不辣，才算還清。"],
+  ["me","……（手機又震了一下）黃思妤傳來剪好的影片，把我畫地名的那段剪得很有節奏。"],
+  ["jiaen","……畫得慢，剪得快。這樣的搭配，很好。"]]};
 function scriptToSteps(lines){
   return lines.map(l=>{
     const sp=l[0], t=l[1];
@@ -4462,7 +4471,9 @@ function renderQuiz(step){
   dlgBoxEl().classList.remove("hidden");
   dlgBoxEl().classList.remove("player");
   const qArt = artFor(step.npcName);
-  dlgSpeakerEl().innerHTML = (qArt ? '<img class="sp-face" src="'+qArt.face+'">' : (step.npcIcon?step.npcIcon+" ":"🌀 ")) + "記憶考驗";
+  dlgSpeakerEl().innerHTML = (qArt ? '<img class="sp-face" src="'+qArt.face+'">' : (step.npcIcon?step.npcIcon+" ":"🌀 ")) + "記憶考驗"
+    + ((step.isChallenge && challengeRun) ? '<span style="font-size:.78rem;margin-left:8px;opacity:.85;">已作答 '+challengeRun.answered+'・未作答 '+(challengeRun.total-challengeRun.answered)+'</span>' : "");
+  if (step.isChallenge && challengeRun) updateChallengeHud();
   dlgTextEl().textContent = step.quiz.q;
   dlgTapHintEl().style.visibility = "hidden";
   const box = dlgChoicesEl();
@@ -4486,6 +4497,7 @@ function renderQuiz(step){
       if (btn.dataset.locked) return;
       Array.from(box.querySelectorAll(".dlg-choice-btn")).forEach(b=>b.dataset.locked="1");
       const isCorrect = (origIdx === step.quiz.correct);
+      if (step.isChallenge && challengeRun){ challengeRun.answered++; }
       if (isCorrect){
         btn.style.background = "#d9ecd9"; btn.style.borderColor="#4f7a63";
         sfx("correct");
@@ -4514,6 +4526,7 @@ function renderQuiz(step){
   box.appendChild(fbDiv);
 
   function showFeedback(text, allowContinue, stepRef){
+    if (stepRef && stepRef.isChallenge) updateChallengeHud();
     fbDiv.className = "quiz-fb";
     fbDiv.style.marginTop="10px";
     fbDiv.textContent = text;
@@ -4693,17 +4706,94 @@ const REGION_LABEL_POS = {
   central: {x:268, y:258},
   south:   {x:248, y:478},
   east:    {x:630, y:345},
-  island:  {x:145, y:155}
+  island:  {x:130, y:284}
 };
 
+// ---------------------------------------------------------------------
+// 離島比例規則
+//  · 本圖主比例尺 = MAIN_PX_PER_KM（由本島南北長度換算）。澎湖、龜山島、綠島、蘭嶼、小蘭嶼、小琉球
+//    一律依此比例尺繪製（原本的綠島／蘭嶼／小琉球／龜山島被放大約 4.5 倍，這裡依真實面積縮回）。
+//  · 金門、馬祖若依此比例會小到點不到，所以改放在「方框」裡放大顯示，
+//    每個方框都有自己的比例尺與放大倍率，避免誤以為它們有那麼大。
+// ---------------------------------------------------------------------
+const MAIN_PX_PER_KM = 1.824;
+const ISLAND_TRUE_SCALE = { "龜山島":0.204, "蘭嶼":0.222, "綠島":0.215, "小蘭嶼":0.218, "小琉球":0.223 };
+const ISLAND_INSETS = {
+  "連江縣": { title:"馬祖（連江縣）", x:8,   y:8, w:237, h:224, pxPerKm:3.6,   scaleKm:20,
+             labels:{ "南竿":["南竿","below"], "北竿":["北竿","above"], "東引":["東引","above"], "東莒":["東莒","right"], "西莒":["西莒","above"] } },
+  "金門縣": { title:"金門縣",       x:253, y:8, w:182, h:148, pxPerKm:6.108, scaleKm:10,
+             labels:{ "金門本島":["金門","above"], "烈嶼（小金門）":["烈嶼","above"] } }
+};
+function ptsToArr(pts){ return pts.trim().split(/\s+/).map(q=>q.split(",").map(Number)); }
+function arrToPts(a){ return a.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" "); }
+function arrBBox(a){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  a.forEach(p=>{ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; });
+  return {x0,y0,x1,y1,cx:(x0+x1)/2,cy:(y0+y1)/2};
+}
+const _trueIslandCache = {};
+function trueScaledIsland(isl){
+  if (_trueIslandCache[isl.name]) return _trueIslandCache[isl.name];
+  const f = ISLAND_TRUE_SCALE[isl.name] || 1;
+  const a = ptsToArr(isl.pts), b = arrBBox(a);
+  const na = a.map(p=>[b.cx+(p[0]-b.cx)*f, b.cy+(p[1]-b.cy)*f]);
+  return (_trueIslandCache[isl.name] = { pts:arrToPts(na), bbox:arrBBox(na), name:isl.name });
+}
 function countyPolys(countyName){
   const c = countyMapData[countyName];
   if (!c) return [];
   const list = [];
   if (c.pts) list.push(c.pts);
-  if (c.shapes) c.shapes.forEach(s=>list.push(s.pts));
-  if (c.extraIslands) c.extraIslands.forEach(s=>list.push(s.pts));
+  if (c.shapes && !ISLAND_INSETS[countyName]) c.shapes.forEach(s=>list.push(s.pts));
+  if (c.extraIslands) c.extraIslands.forEach(s=>list.push(trueScaledIsland(s).pts));
   return list;
+}
+function svgEl(ns, tag, attrs){
+  const e = document.createElementNS(ns, tag);
+  Object.keys(attrs||{}).forEach(k=>e.setAttribute(k, attrs[k]));
+  return e;
+}
+function svgText(ns, x, y, text, size, anchor, extra){
+  const t = svgEl(ns,"text",Object.assign({x:x, y:y, "font-size":size, "text-anchor":anchor||"middle", fill:"#fdf3da",
+    "fill-opacity":"1", "stroke-opacity":"1", "paint-order":"stroke", stroke:"#1c2a2e", "stroke-width":"2.2", "pointer-events":"none"}, extra||{}));
+  t.textContent = text;
+  return t;
+}
+// 比例尺：長度 km → 像素，畫在 (x,y) 開始的位置
+function drawScaleBar(ns, parent, x, y, km, pxPerKm, color){
+  const L = km*pxPerKm, c = color || "#fdf3da";
+  parent.appendChild(svgEl(ns,"path",{d:"M"+x+","+(y-4)+" V"+y+" H"+(x+L)+" V"+(y-4)+" M"+(x+L/2)+","+(y-3)+" V"+y,
+    fill:"none", stroke:c, "stroke-width":"1.4", "pointer-events":"none"}));
+  parent.appendChild(svgText(ns, x, y+10, "0", 8, "middle"));
+  parent.appendChild(svgText(ns, x+L, y+10, km+" km", 8, "middle"));
+}
+// 方框放大圖：金門、馬祖
+function drawInset(ns, g, cname){
+  const cfg = ISLAND_INSETS[cname], c = countyMapData[cname];
+  const k = cfg.pxPerKm / c.pxPerKm;
+  const shapes = c.shapes.map(s=>({name:s.name, a:ptsToArr(s.pts)}));
+  const all = []; shapes.forEach(s=>s.a.forEach(p=>all.push(p)));
+  const bb = arrBBox(all);
+  const ox = cfg.x + (cfg.w - (bb.x1-bb.x0)*k)/2, oy = cfg.y + 26;
+  const tx = p => [ox + (p[0]-bb.x0)*k, oy + (p[1]-bb.y0)*k];
+  g.appendChild(svgEl(ns,"rect",{x:cfg.x, y:cfg.y, width:cfg.w, height:cfg.h, rx:5, fill:"#fdf3da", "fill-opacity":"0.10",
+    stroke:"#fdf3da", "stroke-width":"1.3", "stroke-dasharray":"5 3", "stroke-opacity":"0.9"}));
+  const mag = (cfg.pxPerKm / MAIN_PX_PER_KM);
+  g.appendChild(svgText(ns, cfg.x+8, cfg.y+16, cfg.title+"・放大約 "+(mag<10?mag.toFixed(1).replace(/\.0$/,""):Math.round(mag))+" 倍", 10, "start", {"font-weight":"700"}));
+  shapes.forEach(sh=>{
+    const na = sh.a.map(tx);
+    const poly = svgEl(ns,"polygon",{points:arrToPts(na), "class":"shape"});
+    g.appendChild(poly);
+    const lab = cfg.labels[sh.name];
+    if (lab){
+      const b = arrBBox(na);
+      let x=b.cx, y=b.y0-3, anchor="middle";
+      if (lab[1]==="below"){ y=b.y1+9; }
+      else if (lab[1]==="right"){ x=b.x1+3; y=b.cy+3; anchor="start"; }
+      g.appendChild(svgText(ns, x, y, lab[0], 8, anchor));
+    }
+  });
+  drawScaleBar(ns, g, cfg.x+10, cfg.y+cfg.h-16, cfg.scaleKm, cfg.pxPerKm);
 }
 
 function renderWorldMap(){
@@ -4724,11 +4814,24 @@ function renderWorldMap(){
     g.setAttribute("stroke-linejoin","round");
 
     region.counties.forEach(cname=>{
+      if (ISLAND_INSETS[cname]){ drawInset(ns, g, cname); return; }
       countyPolys(cname).forEach(pts=>{
         const poly = document.createElementNS(ns,"polygon");
         poly.setAttribute("points", pts);
         poly.setAttribute("class","shape");
         g.appendChild(poly);
+      });
+      // 依真實比例縮小後的小島名稱標籤（澎湖、龜山島、綠島、蘭嶼、小琉球）
+      const cd = countyMapData[cname];
+      if (cname === "澎湖縣" && cd && cd.pts){
+        const b = arrBBox(ptsToArr(cd.pts));
+        g.appendChild(svgText(ns, b.cx, b.y1+11, "澎湖", 9, "middle"));
+      }
+      (cd && cd.extraIslands || []).forEach(isl=>{
+        if (isl.name === "小蘭嶼") return;
+        const b = trueScaledIsland(isl).bbox;
+        if (isl.name === "小琉球" || isl.name === "龜山島") g.appendChild(svgText(ns, b.x0-3, b.cy+3, isl.name, 8, "end"));
+        else g.appendChild(svgText(ns, b.x1+3, b.cy+3, isl.name, 8, "start"));
       });
     });
 
@@ -4753,6 +4856,13 @@ function renderWorldMap(){
     }
     svg.appendChild(g);
   });
+
+  // 本圖主比例尺
+  const sc = svgEl(ns,"g",{"pointer-events":"none"});
+  sc.appendChild(svgText(ns, 14, 668, "本圖比例尺：本島、澎湖、綠島、蘭嶼、小琉球、龜山島皆依此繪製", 8, "start"));
+  sc.appendChild(svgText(ns, 14, 680, "金門、馬祖為放大示意，請以各方框內的比例尺為準", 8, "start"));
+  drawScaleBar(ns, sc, 16, 698, 50, MAIN_PX_PER_KM);
+  svg.appendChild(sc);
 
   // legend
   const legend = document.getElementById("worldmap-legend");
@@ -5107,7 +5217,7 @@ function serializeSave(){
     v:2, playerName:state.playerName, charKey:state.charKey, gender:state.gender, homeRegion:state.homeRegion,
     discovered:Object.keys(state.discovered).map(Number),
     loreScore:state.loreScore, regionDone:state.regionDone, party:state.party, seenIntro:state.seenIntro,
-    challengeBest:state.challengeBest, metGuides:state.metGuides, metProtagonists:state.metProtagonists
+    challengeBest:state.challengeBest, challengeBestBy:state.challengeBestBy, challengeBoards:state.challengeBoards, challengeSeq:state.challengeSeq, metGuides:state.metGuides, metProtagonists:state.metProtagonists
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 }
@@ -5124,6 +5234,10 @@ function loadSaveCode(code){
     state.party = payload.party||[];
     state.seenIntro = !!payload.seenIntro;
     state.challengeBest = payload.challengeBest||0;
+    state.challengeBestBy = payload.challengeBestBy || {};
+    if (!state.challengeBestBy[10] && state.challengeBest) state.challengeBestBy[10] = state.challengeBest;   // 舊存檔：原本只有 10 題
+    state.challengeBoards = payload.challengeBoards || {};
+    state.challengeSeq = payload.challengeSeq || 0;
     state.metGuides = payload.metGuides||{};
     state.metProtagonists = payload.metProtagonists||{};
     return true;
@@ -5314,6 +5428,39 @@ function openPeopleGalleryModal(){
 }
 
 // ---------- 自由挑戰區 ----------
+const CHALLENGE_COUNTS = [10, 20, 50, 100];
+let challengeSel = 10;      // 目前選擇的挑戰題數（同時決定顯示哪一張排行榜）
+let challengeRun = null;    // 進行中的挑戰：{total, answered, startedAt, timer}
+
+function challengePool(useFull){
+  return (useFull ? placesData.slice() : placesData.filter(p=>state.discovered[p.id])).filter(p=>QUIZ_BY_PLACEID[p.id]);
+}
+// 完成時間以「0.1 秒」為單位（整數），同一單位視為同時間
+function fmtDeci(deci){
+  const d = deci % 10, secs = Math.floor(deci/10), m = Math.floor(secs/60), ss = secs % 60;
+  return m + ":" + (ss<10?"0":"") + ss + "." + d;
+}
+// 排序：①答對率高者在前（同一張榜題數相同，即答對題數多者在前）
+//       ②答對率相同 → 完成時間短者在前
+//       ③時間也相同 → 先達成紀錄者（時間較早、流水號較小）在前
+function sortBoard(list){
+  return list.sort((x,y)=> (y.score-x.score) || (x.deci-y.deci) || (x.at-y.at) || (x.seq-y.seq));
+}
+function stopChallengeTimer(){
+  if (challengeRun && challengeRun.timer){ clearInterval(challengeRun.timer); challengeRun.timer = null; }
+}
+function challengeHudText(){
+  if (!challengeRun) return "";
+  const a = challengeRun.answered, n = challengeRun.total;
+  const deci = Math.round((Date.now()-challengeRun.startedAt)/100);
+  return "🏆 自由挑戰 "+n+" 題｜已作答 "+a+"／未作答 "+(n-a)+"｜答對 "+challengeScore+"｜⏱ "+fmtDeci(deci);
+}
+function updateChallengeHud(){
+  const el = document.getElementById("topbar-chapter");
+  if (el) el.textContent = challengeHudText();
+  curChapterLabel = challengeHudText();
+}
+
 function renderChallengeScreen(){
   setBgmRegion(null);
   const total = placesData.length;
@@ -5334,46 +5481,110 @@ function renderChallengeScreen(){
       '</div>';
     return;
   }
+  const poolSize = challengePool(fullUnlocked).length;
+  if (CHALLENGE_COUNTS.indexOf(challengeSel) === -1 || challengeSel > poolSize) challengeSel = 10;
   const bodyText = fullUnlocked
-    ? '🎉 全島 574 則地名記憶已完整收錄！挑戰模式會從全部地名中隨機抽出 10 題，測驗你的地名學識——答錯不能重來，全力以赴吧！'
-    : '🧭 你已經認識了 10 位以上的在地嚮導！挑戰模式會從你「已探索過」的地名中隨機抽出 10 題，測驗你的地名學識——答錯不能重來，全力以赴吧！';
+    ? '🎉 全島 574 則地名記憶已完整收錄！挑戰模式會從全部地名中隨機抽題，測驗你的地名學識——答錯不能重來，比的是誰又快又穩！'
+    : '🧭 你已經認識了 10 位以上的在地嚮導！挑戰模式會從你「已探索過」的地名中隨機抽題，測驗你的地名學識——答錯不能重來，全力以赴吧！';
+  const chips = CHALLENGE_COUNTS.map(n => {
+    const ok = n <= poolSize, on = (n === challengeSel);
+    return '<button class="brass-btn small'+(on?'':' ghost')+'" data-n="'+n+'" '+(ok?'':'disabled style="opacity:.45;"')+
+           ' style="margin:3px 4px 3px 0;">'+n+' 題'+(ok?'':'（需 '+n+' 則已探索地名）')+'</button>';
+  }).join("");
+  const bestBy = (state.challengeBestBy||{})[challengeSel] || 0;
+  const board = sortBoard(((state.challengeBoards||{})[challengeSel]||[]).slice());
+  const rows = board.slice(0,10).map((r,i)=>{
+    const medal = i===0?"🥇":(i===1?"🥈":(i===2?"🥉":(i+1)));
+    const d = new Date(r.at);
+    const ds = d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate();
+    return '<tr style="border-top:1px solid #d9c9a3;'+(r.latest?'background:#fff4cf;':'')+'">'+
+      '<td style="padding:5px 4px;text-align:center;">'+medal+'</td>'+
+      '<td style="padding:5px 4px;">'+escapeHtml(r.name)+'</td>'+
+      '<td style="padding:5px 4px;text-align:center;"><b>'+Math.round(r.score/challengeSel*100)+'%</b><span style="font-size:.72rem;color:#7a6a4a;"> ('+r.score+'/'+challengeSel+')</span></td>'+
+      '<td style="padding:5px 4px;text-align:right;">'+fmtDeci(r.deci)+'</td>'+
+      '<td style="padding:5px 4px;font-size:.74rem;color:#7a6a4a;">'+ds+'</td></tr>';
+  }).join("");
   body.innerHTML =
     '<div class="paper-panel" style="padding:20px;">'+
     '<div class="detail-title">'+(fullUnlocked?'🎉 全部地名已收錄':'🧭 已解鎖地區隨機測驗')+'</div>'+
-    '<div class="detail-body">'+bodyText+'<br><br>歷史最高分：<b>'+(state.challengeBest||0)+'</b> / 10</div>'+
-    '<button class="brass-btn" id="btn-start-challenge" style="margin-top:14px;">🏆 開始挑戰</button>'+
+    '<div class="detail-body">'+bodyText+'</div>'+
+    '<div style="margin-top:12px;font-weight:bold;">選擇挑戰題數</div>'+
+    '<div id="challenge-count-row" style="margin-top:6px;">'+chips+'</div>'+
+    '<div class="detail-body" style="margin-top:8px;">'+challengeSel+' 題歷史最高分：<b>'+bestBy+'</b> / '+challengeSel+'</div>'+
+    '<button class="brass-btn" id="btn-start-challenge" style="margin-top:12px;">🏆 開始挑戰（'+challengeSel+' 題）</button>'+
+    '</div>'+
+    '<div class="paper-panel" style="padding:16px;margin-top:12px;">'+
+    '<div class="detail-title">🏅 '+challengeSel+' 題排行榜</div>'+
+    '<div style="font-size:.74rem;color:#7a6a4a;margin:2px 0 8px;">排序依序為：①答對率越高越前面 ②答對率相同則完成時間越快越前面 ③時間也相同則先達成紀錄者在前。各題數榜單分開計算，記錄保存於本機存檔。</div>'+
+    (rows
+      ? '<table style="width:100%;border-collapse:collapse;font-size:.86rem;"><thead><tr style="color:#7a6a4a;font-size:.74rem;">'+
+        '<th>名次</th><th style="text-align:left;">玩家</th><th>答對率</th><th style="text-align:right;">完成時間</th><th style="text-align:left;">日期</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      : '<div class="detail-body" style="color:#7a6a4a;">這個題數還沒有紀錄，成為第一位上榜的人吧！</div>')+
     '</div>';
-  document.getElementById("btn-start-challenge").onclick = () => startChallenge(fullUnlocked);
+  Array.from(body.querySelectorAll("#challenge-count-row button[data-n]")).forEach(btn=>{
+    btn.onclick = () => { if (btn.disabled) return; sfx("click"); challengeSel = Number(btn.dataset.n); renderChallengeScreen(); };
+  });
+  document.getElementById("btn-start-challenge").onclick = () => startChallenge(fullUnlocked, challengeSel);
 }
 
-function startChallenge(useFullPool){
+function startChallenge(useFullPool, n){
   setBgmRegion(null);
-  const pool = (useFullPool ? placesData.slice() : placesData.filter(p=>state.discovered[p.id]));
+  n = n || challengeSel || 10;
+  const pool = challengePool(useFullPool);
   if (pool.length === 0){ toast("目前還沒有已探索過的地名，先去旅程裡蒐集幾則吧！"); return; }
+  if (pool.length < n){ toast("可抽題的地名不足 "+n+" 則，請先選擇較少的題數。"); return; }
   for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
-  const picks = pool.slice(0,10);
+  const picks = pool.slice(0,n);
   challengeScore = 0;
-  const steps = [];
-  picks.forEach((p,idx)=>{
+  stopChallengeTimer();
+  challengeRun = { total:n, answered:0, startedAt:Date.now(), timer:null };
+  const run = challengeRun;
+  run.timer = setInterval(()=>{
+    const scr = document.getElementById("screen-dialogue");
+    if (challengeRun !== run || !scr || scr.classList.contains("hidden")){ clearInterval(run.timer); run.timer = null; return; }
+    const el = document.getElementById("topbar-chapter");
+    if (el) el.textContent = challengeHudText();
+  }, 200);
+  const steps = picks.map((p,idx)=>{
     const qinfo = QUIZ_BY_PLACEID[p.id];
-    if (!qinfo) return;
-    steps.push({
-      type:"quiz", quiz:qinfo.quiz, placeId:p.id, npcName:qinfo.npcName, npcIcon:qinfo.npcIcon,
-      isChallenge:true, scene:"🏆", label:"自由挑戰・第 "+(idx+1)+" 題／10"
-    });
+    return { type:"quiz", quiz:qinfo.quiz, placeId:p.id, npcName:qinfo.npcName, npcIcon:qinfo.npcIcon,
+             isChallenge:true, scene:"🏆", label:"自由挑戰・第 "+(idx+1)+" 題／"+n };
   });
   playSequence(steps, () => {
-    if (challengeScore > (state.challengeBest||0)){ state.challengeBest = challengeScore; sfx("complete"); toast("🎉 締造新紀錄！"); }
-    else { sfx(challengeScore>=6 ? "complete" : "fail"); }
+    stopChallengeTimer();
+    const deci = Math.max(1, Math.round((Date.now()-run.startedAt)/100));
+    challengeRun = null;
+    setChapterLabel("");
+    // 紀錄：每個題數各自一張榜；同時間以 at／seq 判定先後
+    state.challengeSeq = (state.challengeSeq||0) + 1;
+    const rec = { name:playerName(), charKey:state.charKey, deci:deci, score:challengeScore, at:Date.now(), seq:state.challengeSeq, latest:true };
+    state.challengeBoards = state.challengeBoards || {};
+    const list = state.challengeBoards[n] = (state.challengeBoards[n]||[]);
+    list.forEach(r => { delete r.latest; });
+    list.push(rec);
+    sortBoard(list);
+    const rank = list.indexOf(rec) + 1;
+    if (list.length > 50) list.length = 50;
+    state.challengeBestBy = state.challengeBestBy || {};
+    let newBest = false;
+    if (challengeScore > (state.challengeBestBy[n]||0)){ state.challengeBestBy[n] = challengeScore; newBest = true; }
+    if (n === 10) state.challengeBest = state.challengeBestBy[10] || 0;
+    if (newBest){ sfx("complete"); toast("🎉 締造新紀錄！"); }
+    else { sfx(challengeScore >= n*0.6 ? "complete" : "fail"); }
     openModal(
-      '<div class="detail-title">🏆 挑戰結束</div>'+
-      '<div class="detail-body">這一輪，你答對了 <b>'+challengeScore+'</b> / 10 題。<br>歷史最高分：<b>'+state.challengeBest+'</b> / 10</div>'+
-      '<button class="brass-btn small" id="challenge-retry-btn" style="margin-top:10px;">再挑戰一次</button>',
+      '<div class="detail-title">🏆 挑戰結束（'+n+' 題）</div>'+
+      '<div class="detail-body">答對 <b>'+challengeScore+'</b> / '+n+' 題（未答對 '+(n-challengeScore)+' 題）<br>'+
+      '答對率：<b>'+Math.round(challengeScore/n*100)+'%</b>　完成時間：<b>'+fmtDeci(deci)+'</b><br>'+
+      (rank<=50 ? '本次名次：<b>第 '+rank+' 名</b>（'+n+' 題榜）<br>' : '這次沒有進入前 50 名。<br>')+
+      n+' 題歷史最高分：<b>'+state.challengeBestBy[n]+'</b> / '+n+'</div>'+
+      '<button class="brass-btn small" id="challenge-retry-btn" style="margin-top:10px;">再挑戰一次（'+n+' 題）</button>',
       {center:true}
     );
     const back = document.querySelector("#modal-root .modal-back:last-child");
-    back.querySelector("#challenge-retry-btn").addEventListener("click", ()=>{ back.remove(); startChallenge(useFullPool); });
+    back.querySelector("#challenge-retry-btn").addEventListener("click", ()=>{ back.remove(); startChallenge(useFullPool, n); });
+    challengeSel = n;
     showScreen("challenge"); renderChallengeScreen(); renderTopbar();
+    autosave();
   });
 }
 
