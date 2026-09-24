@@ -1724,7 +1724,7 @@ const COMPANIONS = {
   keshian: {
     key:"keshian", name:"柯世安", icon:"📐", region:"island",
     title:"帶著阿公戶口調查簿的年輕地政士",
-    desc:"堅信「白紙黑字才算數」的年輕土地代書，隨身帶著祖父日治時期留下的戶口調查簿，從北部就一路跟著旅人查證地名。一開始對精怪、口傳故事嗤之以鼻，卻在花蓮親眼看見官方文獻記得住地名、卻記不住地名背後那段被抹去的故事，從此明白：紙本與口傳，缺一不可。"
+    desc:"堅信「白紙黑字才算數」的年輕土地代書，隨身帶著祖父日治時期留下的戶口調查簿，從旅程的第一區就一路跟著旅人查證地名。一開始對精怪、口傳故事嗤之以鼻，卻在花蓮親眼看見官方文獻記得住地名、卻記不住地名背後那段被抹去的故事，從此明白：紙本與口傳，缺一不可。"
   }
 };
 
@@ -2284,7 +2284,7 @@ const VOICE_LINES = {
     ],
     "clear": [
       "「{region}」這片土地，記住了。",
-      "走吧。「{region}」之後，下一座山還在等。"
+      "走吧。「{region}」之後，還有路在等。"
     ]
   },
   "cheerful": {
@@ -2405,7 +2405,7 @@ const REGIONS = [
         rightFb:"沒錯！『雞籠』真正的由來，至今仍有『島形似籠』與『凱達格蘭音轉』兩派說法並存——這正是地名考據迷人的地方：答案不一定只有一個，但捏造的謊言絕對不是答案。",
         wrongFb:"灰霧又濃了一分……社寮公嘆了口氣：「再想想，孩子，養雞的籠子可騙不了真正的歷史。」"
       },
-      afterQuiz:["（灰霧散去，島嶼恢復清晰）謝謝你，旅人。這份記憶碎片，我把它託付給你了。","（一位滿臉風霜的老水手在一旁哈哈大笑）「哈！說得好，臭小子。老頭子在這港口討海五十年，還是頭一次聽人把雞籠的典故講得這麼清楚——要不要讓我這條老骨頭陪你走一趟北部？」"]
+      afterQuiz:["（灰霧散去，島嶼恢復清晰）謝謝你，旅人。這份記憶碎片，我把它託付給你了。","@ahai@（一位滿臉風霜的老水手在一旁哈哈大笑）「哈！說得好，臭小子。老頭子在這港口討海五十年，還是頭一次聽人把雞籠的典故講得這麼清楚——要不要讓我這條老骨頭陪你走一趟北部？」"]
     },
     { placeId:14, sceneEmoji:"🛶", npcName:"艋舺姑", npcIcon:"🛶",
       pages:[
@@ -2458,7 +2458,8 @@ const REGIONS = [
   ],
   closing:[
     "孩子，你已經喚醒了北部四段珍貴的記憶。雞籠的爭議、艋舺的獨木舟、北投的女巫傳說、頭城的第一步——每一個名字背後，都是一整段活過的歷史。",
-    "@ahai@喂，臭小子，一路看你查證這些老地名，還真有點意思。我在基隆港討海一輩子，這條命跟這片海分不開——讓我這條老骨頭正式陪你走完剩下的路吧！"
+    "#!last#@ahai@喂，臭小子，一路看你查證這些老地名，還真有點意思。我在基隆港討海一輩子，這條命跟這片海分不開——讓我這條老骨頭正式陪你走完剩下的路吧！",
+    "#last#@ahai@喂，臭小子，一路看你查證這些老地名，還真有點意思。我在基隆港討海一輩子，這條命跟這片海分不開——讓我這條老骨頭，正式加入你們這支隊伍吧！"
   ]
 },
 {
@@ -2641,7 +2642,9 @@ const REGIONS = [
         rightFb:"正是，從『阿猴』到『阿緱』再到『屏東』，這個地名走過了三次書寫上的雅化。",
         wrongFb:"文瀾搖頭：「一說、二說皆非，還請旅人再細思一番。」"
       },
-      afterQuiz:["文瀾拱手：「與君一席行，勝讀十年書。在下想跟隨旅人，繼續往東部、離島考據下去——不知可否讓在下同行？」"]
+      afterQuiz:["#!done:island#文瀾拱手：「與君一席行，勝讀十年書。在下想跟隨旅人，繼續往東部、離島考據下去——不知可否讓在下同行？」",
+    "#done:island##!done:east#文瀾拱手：「與君一席行，勝讀十年書。在下想跟隨旅人，繼續往東部考據下去——不知可否讓在下同行？」",
+    "#done:east#文瀾拱手：「與君一席行，勝讀十年書。在下想跟隨旅人，把這一路的考據好好整理成冊——不知可否讓在下同行？」"]
     }
   ],
   closing:[
@@ -2734,7 +2737,8 @@ const REGIONS = [
         rightFb:"沒錯，這是卑南族人強調部落凝聚力的自稱，後來因卑南王的勢力而擴大成整個東部的代稱。",
         wrongFb:"拉罕搖頭：「再想想，我剛剛說的，是誰為自己取的名字？」"
       },
-      afterQuiz:["拉罕伸出手：「山與海都認得你走過的路。我拉罕，願意做你在東部與離島之間的嚮導。」", "@keshian@「拉罕，謝謝你——不只是吉安的事。是你讓我明白，一本筆記本裝不下一整個民族的記憶。」"]
+      afterQuiz:["#!done:island#拉罕伸出手：「山與海都認得你走過的路。我拉罕，願意做你在東部與離島之間的嚮導。」",
+    "#done:island#拉罕伸出手：「山與海都認得你走過的路。我拉罕，願意做你在東部的嚮導。」", "@keshian@「拉罕，謝謝你——不只是吉安的事。是你讓我明白，一本筆記本裝不下一整個民族的記憶。」"]
     }
   ],
   closing:[
@@ -2808,12 +2812,14 @@ const REGIONS = [
         rightFb:"沒錯，馬祖是少數直接源自民間信仰傳說的離島地名，跟金門的軍事命名邏輯完全不同。",
         wrongFb:"潘嫂搖搖手：「毋是啦囡仔，再想想我剛剛講的那尊神明。」"
       },
-      afterQuiz:["@phoasoh@潘嫂笑咪咪地說：「囡仔，你這趟走下來，比我這討海人還懂海島的故事咧！讓潘嫂陪你把最後幾段路走完吧！」"]
+      afterQuiz:["#!last#@phoasoh@潘嫂笑咪咪地說：「囡仔，你這趟走下來，比我這討海人還懂海島的故事咧！讓潘嫂陪你把最後幾段路走完吧！」",
+    "#last#@phoasoh@潘嫂笑咪咪地說：「囡仔，你這趟走下來，比我這討海人還懂海島的故事咧！這最後一站，就讓潘嫂陪你走完吧！」"]
     }
   ],
   closing:[
     "離島的記憶已然歸位——媽宮的娘媽宮、金門的固若金湯、馬祖的顯靈傳說，三種截然不同的命名邏輯，都刻進了羅盤裡。",
-    "@phoasoh@「好啦，正式入隊！囡仔，潘嫂陪你走下去！」"
+    "#!last#@phoasoh@「好啦，正式入隊！囡仔，潘嫂陪你走下去！」",
+    "#last#@phoasoh@「好啦，正式入隊！囡仔，這趟旅程，潘嫂跟你一起走到底！」"
   ]
 }
 ];
@@ -2902,13 +2908,12 @@ function escapeHtml(str){
 //   音效：Web Audio API 即時合成，不需任何外部檔案
 // =====================================================================
 const BGM_FILES = {
-  lobby:     "bgm_lobby.mp3",     // 大廳／標題／地圖／圖鑑
-  north:     "bgm_north.mp3",     // 北部
-  central:   "bgm_central.mp3",   // 中部
-  south:     "bgm_south.mp3",     // 南部
-  east:      "bgm_east.mp3",      // 東部
-  island:    "bgm_island.mp3",    // 離島
-  challenge: "bgm_challenge.mp3"  // 自由挑戰區
+  lobby:   "bgm_lobby.mp3",    // 大廳／標題／地圖／圖鑑／挑戰
+  north:   "bgm_north.mp3",    // 北部
+  central: "bgm_central.mp3",  // 中部
+  south:   "bgm_south.mp3",    // 南部
+  east:    "bgm_east.mp3",     // 東部
+  island:  "bgm_island.mp3"    // 離島
 };
 const BGM_FOLDER = "";   // 若把音樂放在子資料夾，改成 "audio/" 即可
 
@@ -3114,19 +3119,24 @@ function castAllowed(key, region){
   return false;
 }
 // 條件台詞：#done:east# / #!done:east# 前綴，依旅程進度決定是否出現
-function lineCondOk(cond){
+function lineCondOk(cond, region){
   const neg = cond.charAt(0) === "!";
   const c = neg ? cond.slice(1) : cond;
   let v = true;
   if (c.indexOf("done:") === 0) v = !!state.regionDone[c.slice(5)];
+  else if (c === "last")  v = !!(region && isLastRegion(region.id));    // 本區是旅程最後一區
+  else if (c === "first") v = !!(region && isFirstRegion(region.id));   // 本區是旅程第一區
   return neg ? !v : v;
 }
 function filterCastLines(lines, region){
   const out = [];
   (lines||[]).forEach(l => {
-    let t = l;
-    const cm = /^#([^#]+)#/.exec(t);
-    if (cm){ if (!lineCondOk(cm[1])) return; t = t.slice(cm[0].length); }
+    let t = l, skip = false, cm;
+    while ((cm = /^#([^#]+)#/.exec(t))){                     // 可連續疊加多個條件：#done:island##!done:east#
+      if (!lineCondOk(cm[1], region)) skip = true;
+      t = t.slice(cm[0].length);
+    }
+    if (skip) return;
     const m = /^@(\w+)@/.exec(t);
     if (m && !castAllowed(m[1], region)) return;
     out.push(t);
@@ -3148,9 +3158,7 @@ let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂
 function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
 function setBgmRegion(rid){ curBgmRegion = rid || null; }
-let inChallengeQuiz = false;  // true：自由挑戰「測驗進行中」（從開始作答到結束才算，選題畫面不算）
 function syncBgm(screenId){
-  if (inChallengeQuiz){ Audio_.play("challenge"); return; }
   const inField = (screenId==="region" || screenId==="county" || screenId==="dialogue");
   Audio_.play(inField && curBgmRegion && BGM_FILES[curBgmRegion] ? curBgmRegion : "lobby");
 }
@@ -3268,7 +3276,12 @@ function pline(kind, ctx){
   const c = curChar();
   const v = (c && VOICE_LINES[c.voice]) ? VOICE_LINES[c.voice] : VOICE_LINES.bold;
   const pool = v[kind] && v[kind].length ? v[kind] : (v.curious || ["……"]);
-  let text = pool[Math.floor(Math.random()*pool.length)];
+  let pool2 = pool;
+  if (ctx && ctx.last){                                   // 旅程最後一區：不出現「下一站／下一區」之類的期待
+    const f = pool.filter(t => !/下一/.test(t));
+    if (f.length) pool2 = f;
+  }
+  let text = pool2[Math.floor(Math.random()*pool2.length)];
   if (ctx){
     if (ctx.place) text = text.split("{place}").join(ctx.place);
     if (ctx.region) text = text.split("{region}").join(ctx.region);
@@ -3343,15 +3356,16 @@ function buildMeetSteps(otherKey){
   steps.push({type:"line", speaker:"旁白", text:"你在"+county+"，意外遇見了同樣在探尋地名記憶的「"+other.name+"」。", scene:other.icon});
   const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
   const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
+  const myG = (CHAR_BY_KEY[state.charKey]||{}).gender, otherG = other.gender;
   if (script){
     script.forEach(ln=>{
-      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:adaptPronoun(ln.text, otherG), isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:adaptPronoun(ln.text, myG)});
     });
   } else if (pairScript){
     pairScript.forEach(ln=>{
-      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:adaptPronoun(ln.text, otherG), isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:adaptPronoun(ln.text, myG)});
     });
   } else {
     steps.push({type:"line", speaker:other.name, icon:other.icon,
@@ -3900,6 +3914,10 @@ const REGION_LOCAL_PROTAGONISTS = {
 function localCompanionKeys(regionId){
   return (REGION_LOCAL_PROTAGONISTS[regionId] || []).filter(k => k !== state.charKey);
 }
+const REGION_MEET_NARRATION_VISITOR = {   // 玩家是「外地來的旅人」（本區有兩位主角群同伴，彼此原本就認識、玩家並不熟悉）
+  north:"鹹鹹的海風迎面吹來，你才剛踏進基隆，港邊就有兩道身影朝你這裡靠近。",
+  east:"翻過中央山脈沒多久，兩道身影已經出現在你面前——一個安靜寡言，一個笑聲清亮。"
+};
 const REGION_MEET_NARRATION = {
   north:"鹹鹹的海風迎面吹來，你才剛踏進基隆，就先在熟悉的街角撞見了對方。",
   central:"才剛踏進台中，一陣手遊的按鍵聲和一段熱舞的節奏，幾乎同時朝你這裡靠近。",
@@ -4075,21 +4093,29 @@ function buildMainCastStopBanter(region, idx){
   return [{type:"line", speaker:c.name, icon:c.icon, text:pool[idx % pool.length]}];
 }
 // 相遇時的專屬台詞（沿用 MEET_SCRIPTS／PAIR_MEET_SCRIPTS，依關係自動挑選）
+// 通用腳本原本是以「某一位玩家」的性別寫成，套用到別的玩家時會出現「對女生說你／對男生說妳」。
+// 這裡依「聽話的人」的性別統一：對女性用「妳」、對男性用「你」（「你們／妳們」不動）。
+function adaptPronoun(text, listenerGender){
+  if (listenerGender === "f") return text.replace(/你(?!們)/g, "妳");
+  if (listenerGender === "m") return text.replace(/妳(?!們)/g, "你");
+  return text;
+}
 function buildOneMeetLines(otherKey){
   const other = CHAR_BY_KEY[otherKey];
   const rel = relationBetween(state.charKey, otherKey);
   const steps = [];
   const script = MEET_SCRIPTS[otherKey] && MEET_SCRIPTS[otherKey][rel];
   const pairScript = PAIR_MEET_SCRIPTS[pairScriptKey(state.charKey, otherKey)];
+  const myG = (CHAR_BY_KEY[state.charKey]||{}).gender, otherG = other.gender;
   if (script){
     script.forEach(ln=>{
-      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:adaptPronoun(ln.text, otherG), isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:adaptPronoun(ln.text, myG)});
     });
   } else if (pairScript){
     pairScript.forEach(ln=>{
-      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+      if (ln.spk === state.charKey) steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:adaptPronoun(ln.text, otherG), isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:adaptPronoun(ln.text, myG)});
     });
   } else {
     steps.push({type:"line", speaker:other.name, icon:other.icon, text:"你好，我是"+other.name+"，大家都叫我「"+other.nick+"」。"});
@@ -4106,7 +4132,7 @@ function buildMainCastGreetSteps(region){
     return scriptToSteps(custom);
   }
   const steps = [];
-  const nar = REGION_MEET_NARRATION[region.id];
+  const nar = (keys.length === 2 && REGION_MEET_NARRATION_VISITOR[region.id]) || REGION_MEET_NARRATION[region.id];
   if (nar) steps.push({type:"line", speaker:"旁白", text:nar});
   keys.forEach(k=>{
     steps.push.apply(steps, buildOneMeetLines(k));
@@ -4115,7 +4141,7 @@ function buildMainCastGreetSteps(region){
   if (keys.length === 2) steps.push.apply(steps, buildProtagonistPairSteps(keys[0], keys[1]));
   const names = keys.map(k=>CHAR_BY_KEY[k].name).join("、");
   steps.push({type:"line", speaker:MENTOR.name, icon:MENTOR.icon,
-    text:"既然有緣同路，"+names+"，就讓你們陪"+playerName()+"，一起把這段地名記憶找回來吧。"});
+    text:"既然有緣同路，"+names+"，就讓"+(keys.length===1?"你":"你們")+"陪"+playerName()+"，一起把這段地名記憶找回來吧。"});
   return steps;
 }
 // 離開這個區域、前往下一區之前，跟本區主角群成員道別的專屬台詞
@@ -4288,9 +4314,10 @@ function buildMainCastFarewellSteps(region){
     const entry = PROTAGONIST_FAREWELL[k];
     const script = pickFarewellVariant(entry && (entry[rel] || entry.stranger || entry.friend || entry.rival), region);
     if (!script) return;
+    const myG = (CHAR_BY_KEY[state.charKey]||{}).gender;
     script.forEach(ln=>{
-      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:ln.text, isPlayer:true});
-      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:ln.text});
+      if (ln.spk === "me") steps.push({type:"line", speaker:playerName(), icon:playerIcon(), text:adaptPronoun(ln.text, other.gender), isPlayer:true});
+      else steps.push({type:"line", speaker:other.name, icon:other.icon, text:adaptPronoun(ln.text, myG)});
     });
   });
   return steps;
@@ -4342,7 +4369,11 @@ function buildMainQuestSteps(region){
   let openLines = [];
   if (first) openLines = openLines.concat(JOURNEY.firstOpening(region));
   if (last)  openLines = openLines.concat(JOURNEY.lastOpening);
-  openLines = openLines.concat(filterCastLines(region.opening, region));
+  const regOpen = filterCastLines(region.opening, region).slice();
+  if (first && region.id === "east" && regOpen.length){
+    regOpen[0] = "花蓮的風從太平洋一路灌進縱谷——你聽見了嗎？那是你從小聽到大的浪聲。";   // 家鄉不需要「翻過中央山脈」
+  }
+  openLines = openLines.concat(regOpen);
   const opening = linesToSteps(openLines, MENTOR);
   const regionBg = REGION_BG[region.id] || "field";
   if (opening.length){ opening[0].scene = region.stops&&region.stops[0]?region.stops[0].sceneEmoji:"🧭"; opening[0].label = region.title; opening[0].bg = regionBg; }
@@ -4370,7 +4401,7 @@ function buildMainQuestSteps(region){
   if (closing.length){ closing[0].scene = "🧭"; closing[0].label = region.title+"・完"; closing[0].bg = regionBg; }
   steps = steps.concat(ksBeforeClosing);
   steps = steps.concat(closing);
-  steps.push(pline("clear", {region: region.name}));
+  steps.push(pline("clear", {region: region.name, last: last}));
   const nxt = nextRegionName(region.id);
   if (nxt){
     steps.push({type:"line", speaker:MENTOR.name, icon:MENTOR.icon,
@@ -5540,7 +5571,6 @@ function startChallenge(useFullPool, n){
   const picks = pool.slice(0,n);
   challengeScore = 0;
   stopChallengeTimer();
-  inChallengeQuiz = true; syncBgm("dialogue");
   challengeRun = { total:n, answered:0, startedAt:Date.now(), timer:null };
   const run = challengeRun;
   run.timer = setInterval(()=>{
@@ -5556,7 +5586,6 @@ function startChallenge(useFullPool, n){
   });
   playSequence(steps, () => {
     stopChallengeTimer();
-    inChallengeQuiz = false;
     const deci = Math.max(1, Math.round((Date.now()-run.startedAt)/100));
     challengeRun = null;
     setChapterLabel("");
