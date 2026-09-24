@@ -3148,9 +3148,10 @@ let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂
 function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
 function setBgmRegion(rid){ curBgmRegion = rid || null; }
+let inChallengeQuiz = false;  // true：自由挑戰「測驗進行中」（從開始作答到結束才算，選題畫面不算）
 function syncBgm(screenId){
+  if (inChallengeQuiz){ Audio_.play("challenge"); return; }
   const inField = (screenId==="region" || screenId==="county" || screenId==="dialogue");
-  if (screenId === "challenge"){ Audio_.play("challenge"); return; }
   Audio_.play(inField && curBgmRegion && BGM_FILES[curBgmRegion] ? curBgmRegion : "lobby");
 }
 function showScreen(id){
@@ -5539,6 +5540,7 @@ function startChallenge(useFullPool, n){
   const picks = pool.slice(0,n);
   challengeScore = 0;
   stopChallengeTimer();
+  inChallengeQuiz = true; syncBgm("dialogue");
   challengeRun = { total:n, answered:0, startedAt:Date.now(), timer:null };
   const run = challengeRun;
   run.timer = setInterval(()=>{
@@ -5554,6 +5556,7 @@ function startChallenge(useFullPool, n){
   });
   playSequence(steps, () => {
     stopChallengeTimer();
+    inChallengeQuiz = false;
     const deci = Math.max(1, Math.round((Date.now()-run.startedAt)/100));
     challengeRun = null;
     setChapterLabel("");
