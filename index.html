@@ -2902,12 +2902,13 @@ function escapeHtml(str){
 //   音效：Web Audio API 即時合成，不需任何外部檔案
 // =====================================================================
 const BGM_FILES = {
-  lobby:   "bgm_lobby.mp3",    // 大廳／標題／地圖／圖鑑／挑戰
-  north:   "bgm_north.mp3",    // 北部
-  central: "bgm_central.mp3",  // 中部
-  south:   "bgm_south.mp3",    // 南部
-  east:    "bgm_east.mp3",     // 東部
-  island:  "bgm_island.mp3"    // 離島
+  lobby:     "bgm_lobby.mp3",     // 大廳／標題／地圖／圖鑑
+  north:     "bgm_north.mp3",     // 北部
+  central:   "bgm_central.mp3",   // 中部
+  south:     "bgm_south.mp3",     // 南部
+  east:      "bgm_east.mp3",      // 東部
+  island:    "bgm_island.mp3",    // 離島
+  challenge: "bgm_challenge.mp3"  // 自由挑戰區
 };
 const BGM_FOLDER = "";   // 若把音樂放在子資料夾，改成 "audio/" 即可
 
@@ -3149,6 +3150,7 @@ let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首�
 function setBgmRegion(rid){ curBgmRegion = rid || null; }
 function syncBgm(screenId){
   const inField = (screenId==="region" || screenId==="county" || screenId==="dialogue");
+  if (screenId === "challenge"){ Audio_.play("challenge"); return; }
   Audio_.play(inField && curBgmRegion && BGM_FILES[curBgmRegion] ? curBgmRegion : "lobby");
 }
 function showScreen(id){
