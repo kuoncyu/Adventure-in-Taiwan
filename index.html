@@ -2918,6 +2918,178 @@ const BGM_FILES = {
 };
 const BGM_FOLDER = "";   // 若把音樂放在子資料夾，改成 "audio/" 即可
 
+/* ===== 離線資料包：從網站（GitHub Pages）下載首頁、圖檔資源包、背景音樂，存進瀏覽器，沒網路也能玩 =====
+   AUTO_OFFLINE_DOWNLOAD = true  → 打開遊戲後自動在背景下載（不詢問）
+   AUTO_OFFLINE_DOWNLOAD = false → 打開遊戲後跳出提示列，按「下載」才開始 */
+const AUTO_OFFLINE_DOWNLOAD = false;
+
+const Offline = (function(){
+  const CACHE = "offline-pack-v1";
+  const SNOOZE_KEY = "offline-pack-snooze-until";
+  const supported = ("serviceWorker" in navigator) && ("caches" in window) && /^https?:$/.test(location.protocol);
+  let ui = null, banner = null, busy = false;
+
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+  function files(){
+    const base = new URL(".", location.href);
+    const list = [
+      {p:"index.html", w:2}, {p:"assets/characters.manifest.json", w:.01}, {p:"assets/characters.pack", w:15},
+      {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7}
+    ];
+    Object.keys(BGM_FILES).forEach(function(k){ list.push({p:BGM_FOLDER + BGM_FILES[k], w:4.3, audio:true}); });
+    const out = list.map(function(f){ f.url = new URL(f.p, base).href; return f; });
+    const here = location.origin + location.pathname;
+    if (!out.some(function(f){ return f.url === here; })) out.push({p:"(首頁網址)", w:0, url:here, page:true});
+    return out;
+  }
+
+  // 同時更新「設定」視窗與提示列的狀態
+  function show(msg, frac){
+    if (ui && ui.st.isConnected){
+      ui.st.textContent = msg;
+      ui.bar.style.display = (frac == null) ? "none" : "block";
+      if (frac != null) ui.fill.style.width = Math.round(frac*100) + "%";
+    }
+    if (banner && banner.el.isConnected){
+      banner.msg.textContent = msg;
+      banner.barWrap.style.display = (frac == null) ? "none" : "block";
+      if (frac != null) banner.fill.style.width = Math.round(frac*100) + "%";
+    }
+  }
+
+  async function status(){
+    const cache = await caches.open(CACHE);
+    const have = new Set((await cache.keys()).map(function(r){ return r.url; }));
+    const list = files();
+    const core = list.filter(function(f){ return !f.audio; });
+    const aud = list.filter(function(f){ return f.audio; });
+    return { coreOk: core.every(function(f){ return have.has(f.url); }),
+             audOk: aud.filter(function(f){ return have.has(f.url); }).length, audTotal: aud.length };
+  }
+
+  async function refresh(){
+    if (!supported){
+      show(location.protocol === "file:" ? "目前是直接開啟檔案，無法使用離線功能。請用網址（https）開啟遊戲。" : "這個瀏覽器不支援離線功能。");
+      return;
+    }
+    const st = await status();
+    if (st.coreOk && st.audOk === st.audTotal) show("✅ 已可離線遊玩（圖檔＋音樂 " + st.audOk + "／" + st.audTotal + " 首都已存好）");
+    else if (st.coreOk) show("⚠️ 圖檔已備妥，但音樂只存了 " + st.audOk + "／" + st.audTotal + " 首，請再按一次下載。");
+    else show("尚未下載。建議在有網路（Wi-Fi）時下載，約 47 MB。");
+  }
+
+  async function download(){
+    if (busy || !supported) return;
+    busy = true;
+    const list = files(), totalW = list.reduce(function(a,f){ return a + f.w; }, 0) || 1;
+    let doneW = 0; const missing = [], failed = [];
+    try{
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
+      const cache = await caches.open(CACHE);
+      for (let i = 0; i < list.length; i++){
+        const f = list[i];
+        show("下載中：" + f.p, doneW / totalW);
+        try{
+          const res = await fetch(f.url, {cache:"reload"});
+          const type = res.headers.get("content-type") || "";
+          if (!res.ok || (f.audio && /text\/html/i.test(type))) throw new Error("missing");
+          const len = +res.headers.get("content-length") || 0;
+          const chunks = []; let got = 0;
+          if (res.body && res.body.getReader){
+            const rd = res.body.getReader();
+            for (;;){
+              const r = await rd.read(); if (r.done) break;
+              chunks.push(r.value); got += r.value.length;
+              if (len) show("下載中：" + f.p + "（" + Math.round(got/len*100) + "%）", (doneW + f.w * got/len) / totalW);
+            }
+          } else { chunks.push(new Uint8Array(await res.arrayBuffer())); }
+          const blob = new Blob(chunks, {type: type});
+          await cache.put(f.url, new Response(blob, {status:200, headers:{"Content-Type": type || (f.audio ? "audio/mpeg" : "application/octet-stream"), "Content-Length": String(blob.size)}}));
+        }catch(e){
+          if (f.audio) missing.push(f.p); else if (!f.page) failed.push(f.p);
+        }
+        doneW += f.w;
+      }
+      const bad = failed.length || missing.length;
+      await refresh();
+      if (bad) show("⚠️ 有檔案下載失敗（" + failed.concat(missing).join("、") + "），請檢查網路後重試。", null);
+      else show("✅ 離線資料包下載完成！之後沒有網路也能玩。", null);
+      if (typeof toast === "function") toast(bad ? "離線資料包未完整下載" : "離線資料包下載完成");
+      if (banner && banner.el.isConnected){
+        banner.btns.style.display = bad ? "flex" : "none";
+        banner.dl.textContent = "重試";
+        if (!bad) setTimeout(closeBanner, 3500);
+      }
+    }catch(err){
+      show("下載失敗：" + (err && err.message ? err.message : err), null);
+    }finally{ busy = false; }
+  }
+
+  async function clear(){
+    if (busy || !supported) return;
+    await caches.delete(CACHE);
+    await refresh();
+  }
+
+  function closeBanner(){ if (banner){ banner.el.remove(); banner = null; } }
+
+  function openBanner(){
+    if (banner) return;
+    const el = document.createElement("div");
+    el.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;max-width:520px;margin:0 auto;z-index:10001;padding:12px 14px;border-radius:12px;background:#efe4c9;color:#2b2119;border:1px solid #c9b489;box-shadow:0 6px 20px rgba(0,0,0,.45);font-size:.85rem;line-height:1.6";
+    el.innerHTML =
+      '<div style="font-weight:700;margin-bottom:2px">📦 下載離線資料包？</div>'+
+      '<div class="ob-msg">下載後沒有網路也能玩（圖檔＋音樂，約 47 MB，建議使用 Wi-Fi）。</div>'+
+      '<div class="ob-bar" style="display:none;height:9px;border-radius:5px;background:rgba(0,0,0,.18);overflow:hidden;margin:6px 0"><div class="ob-fill" style="height:100%;width:0;background:#4f7a63;transition:width .2s"></div></div>'+
+      '<div class="ob-btns" style="display:flex;gap:8px;margin-top:8px"><button class="brass-btn small ob-dl">⬇ 下載</button><button class="brass-btn small ghost ob-later">稍後</button></div>';
+    document.body.appendChild(el);
+    banner = { el: el, msg: el.querySelector(".ob-msg"), barWrap: el.querySelector(".ob-bar"), fill: el.querySelector(".ob-fill"),
+               btns: el.querySelector(".ob-btns"), dl: el.querySelector(".ob-dl") };
+    banner.dl.addEventListener("click", function(){ banner.btns.style.display = "none"; download(); });
+    el.querySelector(".ob-later").addEventListener("click", function(){
+      lsSet(SNOOZE_KEY, String(Date.now() + 3*24*3600*1000));   // 稍後：3 天內不再提示（仍可到 ⚙️ 設定手動下載）
+      closeBanner();
+    });
+  }
+
+  function whenGameReady(cb){
+    let tries = 0;
+    (function poll(){
+      const l = document.getElementById("screen-loading");
+      const done = !l || l.classList.contains("hidden") || l.style.display === "none";
+      if (done || ++tries > 120) cb(); else setTimeout(poll, 500);
+    })();
+  }
+
+  async function startup(){
+    try{
+      await navigator.serviceWorker.register("sw.js");
+      if (!navigator.onLine) return;                       // 已離線就不用提示
+      const st = await status();
+      if (st.coreOk && st.audOk === st.audTotal) return;   // 已經下載完整
+      if (AUTO_OFFLINE_DOWNLOAD){ download(); return; }
+      if (Date.now() < Number(lsGet(SNOOZE_KEY) || 0)) return;
+      openBanner();
+    }catch(e){ console.warn('offline startup', e); }
+  }
+
+  if (supported){
+    window.addEventListener("load", function(){ whenGameReady(startup); });
+  }
+
+  function bind(root){
+    ui = { st: root.querySelector("#off-status"), bar: root.querySelector("#off-bar"), fill: root.querySelector("#off-fill") };
+    const dl = root.querySelector("#off-dl"), del = root.querySelector("#off-del");
+    if (!supported){ dl.disabled = true; del.disabled = true; }
+    dl.addEventListener("click", function(){ sfx("click"); download(); });
+    del.addEventListener("click", function(){ sfx("click"); clear(); });
+    if (busy) show("下載中…", null); else refresh();
+  }
+  return { bind: bind };
+})();
+
 const Audio_ = {
   enabled: true,
   bgmVol: 0.45,
@@ -5902,178 +6074,6 @@ showScreen("title");
 </script>
 
 
-<script>
-/* ===== 離線資料包：從網站（GitHub Pages）下載首頁、圖檔資源包、背景音樂，存進瀏覽器，沒網路也能玩 =====
-   AUTO_OFFLINE_DOWNLOAD = true  → 打開遊戲後自動在背景下載（不詢問）
-   AUTO_OFFLINE_DOWNLOAD = false → 打開遊戲後跳出提示列，按「下載」才開始 */
-const AUTO_OFFLINE_DOWNLOAD = false;
 
-const Offline = (function(){
-  const CACHE = "offline-pack-v1";
-  const SNOOZE_KEY = "offline-pack-snooze-until";
-  const supported = ("serviceWorker" in navigator) && ("caches" in window) && /^https?:$/.test(location.protocol);
-  let ui = null, banner = null, busy = false;
-
-  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
-  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
-
-  function files(){
-    const base = new URL(".", location.href);
-    const list = [
-      {p:"index.html", w:2}, {p:"assets/characters.manifest.json", w:.01}, {p:"assets/characters.pack", w:15},
-      {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7}
-    ];
-    Object.keys(BGM_FILES).forEach(function(k){ list.push({p:BGM_FOLDER + BGM_FILES[k], w:4.3, audio:true}); });
-    const out = list.map(function(f){ f.url = new URL(f.p, base).href; return f; });
-    const here = location.origin + location.pathname;
-    if (!out.some(function(f){ return f.url === here; })) out.push({p:"(首頁網址)", w:0, url:here, page:true});
-    return out;
-  }
-
-  // 同時更新「設定」視窗與提示列的狀態
-  function show(msg, frac){
-    if (ui && ui.st.isConnected){
-      ui.st.textContent = msg;
-      ui.bar.style.display = (frac == null) ? "none" : "block";
-      if (frac != null) ui.fill.style.width = Math.round(frac*100) + "%";
-    }
-    if (banner && banner.el.isConnected){
-      banner.msg.textContent = msg;
-      banner.barWrap.style.display = (frac == null) ? "none" : "block";
-      if (frac != null) banner.fill.style.width = Math.round(frac*100) + "%";
-    }
-  }
-
-  async function status(){
-    const cache = await caches.open(CACHE);
-    const have = new Set((await cache.keys()).map(function(r){ return r.url; }));
-    const list = files();
-    const core = list.filter(function(f){ return !f.audio; });
-    const aud = list.filter(function(f){ return f.audio; });
-    return { coreOk: core.every(function(f){ return have.has(f.url); }),
-             audOk: aud.filter(function(f){ return have.has(f.url); }).length, audTotal: aud.length };
-  }
-
-  async function refresh(){
-    if (!supported){
-      show(location.protocol === "file:" ? "目前是直接開啟檔案，無法使用離線功能。請用網址（https）開啟遊戲。" : "這個瀏覽器不支援離線功能。");
-      return;
-    }
-    const st = await status();
-    if (st.coreOk && st.audOk === st.audTotal) show("✅ 已可離線遊玩（圖檔＋音樂 " + st.audOk + "／" + st.audTotal + " 首都已存好）");
-    else if (st.coreOk) show("⚠️ 圖檔已備妥，但音樂只存了 " + st.audOk + "／" + st.audTotal + " 首，請再按一次下載。");
-    else show("尚未下載。建議在有網路（Wi-Fi）時下載，約 47 MB。");
-  }
-
-  async function download(){
-    if (busy || !supported) return;
-    busy = true;
-    const list = files(), totalW = list.reduce(function(a,f){ return a + f.w; }, 0) || 1;
-    let doneW = 0; const missing = [], failed = [];
-    try{
-      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
-      const cache = await caches.open(CACHE);
-      for (let i = 0; i < list.length; i++){
-        const f = list[i];
-        show("下載中：" + f.p, doneW / totalW);
-        try{
-          const res = await fetch(f.url, {cache:"reload"});
-          const type = res.headers.get("content-type") || "";
-          if (!res.ok || (f.audio && /text\/html/i.test(type))) throw new Error("missing");
-          const len = +res.headers.get("content-length") || 0;
-          const chunks = []; let got = 0;
-          if (res.body && res.body.getReader){
-            const rd = res.body.getReader();
-            for (;;){
-              const r = await rd.read(); if (r.done) break;
-              chunks.push(r.value); got += r.value.length;
-              if (len) show("下載中：" + f.p + "（" + Math.round(got/len*100) + "%）", (doneW + f.w * got/len) / totalW);
-            }
-          } else { chunks.push(new Uint8Array(await res.arrayBuffer())); }
-          const blob = new Blob(chunks, {type: type});
-          await cache.put(f.url, new Response(blob, {status:200, headers:{"Content-Type": type || (f.audio ? "audio/mpeg" : "application/octet-stream"), "Content-Length": String(blob.size)}}));
-        }catch(e){
-          if (f.audio) missing.push(f.p); else if (!f.page) failed.push(f.p);
-        }
-        doneW += f.w;
-      }
-      const bad = failed.length || missing.length;
-      await refresh();
-      if (bad) show("⚠️ 有檔案下載失敗（" + failed.concat(missing).join("、") + "），請檢查網路後重試。", null);
-      else show("✅ 離線資料包下載完成！之後沒有網路也能玩。", null);
-      if (typeof toast === "function") toast(bad ? "離線資料包未完整下載" : "離線資料包下載完成");
-      if (banner && banner.el.isConnected){
-        banner.btns.style.display = bad ? "flex" : "none";
-        banner.dl.textContent = "重試";
-        if (!bad) setTimeout(closeBanner, 3500);
-      }
-    }catch(err){
-      show("下載失敗：" + (err && err.message ? err.message : err), null);
-    }finally{ busy = false; }
-  }
-
-  async function clear(){
-    if (busy || !supported) return;
-    await caches.delete(CACHE);
-    await refresh();
-  }
-
-  function closeBanner(){ if (banner){ banner.el.remove(); banner = null; } }
-
-  function openBanner(){
-    if (banner) return;
-    const el = document.createElement("div");
-    el.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;max-width:520px;margin:0 auto;z-index:9000;padding:12px 14px;border-radius:12px;background:#efe4c9;color:#2b2119;border:1px solid #c9b489;box-shadow:0 6px 20px rgba(0,0,0,.45);font-size:.85rem;line-height:1.6";
-    el.innerHTML =
-      '<div style="font-weight:700;margin-bottom:2px">📦 下載離線資料包？</div>'+
-      '<div class="ob-msg">下載後沒有網路也能玩（圖檔＋音樂，約 47 MB，建議使用 Wi-Fi）。</div>'+
-      '<div class="ob-bar" style="display:none;height:9px;border-radius:5px;background:rgba(0,0,0,.18);overflow:hidden;margin:6px 0"><div class="ob-fill" style="height:100%;width:0;background:#4f7a63;transition:width .2s"></div></div>'+
-      '<div class="ob-btns" style="display:flex;gap:8px;margin-top:8px"><button class="brass-btn small ob-dl">⬇ 下載</button><button class="brass-btn small ghost ob-later">稍後</button></div>';
-    document.body.appendChild(el);
-    banner = { el: el, msg: el.querySelector(".ob-msg"), barWrap: el.querySelector(".ob-bar"), fill: el.querySelector(".ob-fill"),
-               btns: el.querySelector(".ob-btns"), dl: el.querySelector(".ob-dl") };
-    banner.dl.addEventListener("click", function(){ banner.btns.style.display = "none"; download(); });
-    el.querySelector(".ob-later").addEventListener("click", function(){
-      lsSet(SNOOZE_KEY, String(Date.now() + 3*24*3600*1000));   // 稍後：3 天內不再提示（仍可到 ⚙️ 設定手動下載）
-      closeBanner();
-    });
-  }
-
-  function whenGameReady(cb){
-    let tries = 0;
-    (function poll(){
-      const l = document.getElementById("screen-loading");
-      const done = !l || l.classList.contains("hidden") || l.style.display === "none";
-      if (done || ++tries > 120) cb(); else setTimeout(poll, 500);
-    })();
-  }
-
-  async function startup(){
-    try{
-      await navigator.serviceWorker.register("sw.js");
-      if (!navigator.onLine) return;                       // 已離線就不用提示
-      const st = await status();
-      if (st.coreOk && st.audOk === st.audTotal) return;   // 已經下載完整
-      if (AUTO_OFFLINE_DOWNLOAD){ download(); return; }
-      if (Date.now() < Number(lsGet(SNOOZE_KEY) || 0)) return;
-      openBanner();
-    }catch(e){}
-  }
-
-  if (supported){
-    window.addEventListener("load", function(){ whenGameReady(startup); });
-  }
-
-  function bind(root){
-    ui = { st: root.querySelector("#off-status"), bar: root.querySelector("#off-bar"), fill: root.querySelector("#off-fill") };
-    const dl = root.querySelector("#off-dl"), del = root.querySelector("#off-del");
-    if (!supported){ dl.disabled = true; del.disabled = true; }
-    dl.addEventListener("click", function(){ sfx("click"); download(); });
-    del.addEventListener("click", function(){ sfx("click"); clear(); });
-    if (busy) show("下載中…", null); else refresh();
-  }
-  return { bind: bind };
-})();
-</script>
 </body>
 </html>
