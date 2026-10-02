@@ -558,7 +558,7 @@ body{
     <button class="brass-btn ghost small" id="btn-about">關於</button>
     <button class="brass-btn ghost small" id="btn-clear-data">🗑️ 清除資料</button>
   </div>
-  <div class="title-foot">第一款真正以台灣地名為主軸的冒險遊戲，全台574則地名的記憶等待被拾起</div>
+  <div class="title-foot">第一款真正以台灣地名為主軸的冒險遊戲，全台635則地名的記憶等待被拾起</div>
 </div>
 
 <!-- ===================== 選角畫面 ===================== -->
@@ -602,7 +602,16 @@ body{
 
 <!-- ===================== 世界地圖 ===================== -->
 <div class="screen hidden" id="screen-worldmap">
-  <div class="section-title">🧭 台灣拾憶地圖</div>
+  <div class="section-title" style="flex-wrap:wrap;row-gap:6px;">
+    <span>🧭 台灣拾憶地圖</span>
+    <div id="worldmap-progress" style="margin-left:auto;flex:1 1 150px;max-width:280px;min-width:140px;font-family:var(--sans,inherit);font-weight:400;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;color:var(--mist);gap:8px;">
+        <span id="worldmap-progress-text">蒐集進度</span>
+        <b id="worldmap-progress-pct" style="color:var(--gold-lt);font-size:.9rem;">0%</b>
+      </div>
+      <div class="progress-bar" style="margin-top:3px;"><i id="worldmap-progress-bar" style="width:0%"></i></div>
+    </div>
+  </div>
   <div class="map-wrap">
     <svg id="worldmap" viewBox="0 0 670 720" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
@@ -1691,7 +1700,7 @@ const rawPlacesData = [
 // 所有地名事實均取材自 rawPlacesData（原始台灣地名尋根資料庫）
 // =====================================================================
 
-const TITLE_BLURB = "相傳每一個台灣地名，都住著一絲記憶之魂。當人們不再記得家鄉名字的由來，「忘名妖」便會悄悄吞噬那段記憶，只留下似是而非的假故事。你，是被選中的「拾憶者」——手持甦醒的羅盤，即將走遍全島，找回574段正在消逝的地名記憶。";
+const TITLE_BLURB = "相傳每一個台灣地名，都住著一絲記憶之魂。當人們不再記得家鄉名字的由來，「忘名妖」便會悄悄吞噬那段記憶，只留下似是而非的假故事。你，是被選中的「拾憶者」——手持甦醒的羅盤，即將走遍全島，找回635段正在消逝的地名記憶。";
 
 // ---------------------------------------------------------------------
 // 通用場景圖庫：純向量繪製、不含任何可辨識地標，所以同一張圖
@@ -2941,7 +2950,7 @@ const JOURNEY = {
     "@wenlan@「文獻補足了口傳的年代，口傳補足了文獻的心情——這正是史學最珍貴的地方。」",
     "@lahok@「山記得路，海記得浪，人記得名字。三者合在一起，才是完整的家。」",
     "@keshian@「我阿公的調查簿，教會我怎麼『記錄』。而你們，教會了我怎麼『記得』。」",
-    "@mentor@但這趟旅程還沒有真正結束。全台灣還有五百多個地名，正安靜地等待著被記得。你可以回到地圖上，走進每一座城市、每一個鄉鎮，聽聽那些還沒被喚醒的、更多、更多的名字。",
+    "@mentor@但這趟旅程還沒有真正結束。全台灣還有六百多個地名，正安靜地等待著被記得。你可以回到地圖上，走進每一座城市、每一個鄉鎮，聽聽那些還沒被喚醒的、更多、更多的名字。",
     "@mentor@去吧，拾憶者。真正重要的，從來不是打敗忘名妖——而是每一次你願意停下腳步，去問一句「這個地方，為什麼叫這個名字」。"
   ]
 };
@@ -5182,7 +5191,19 @@ function drawInset(ns, g, cname){
   drawScaleBar(ns, g, cfg.x+10, cfg.y+cfg.h-16, cfg.scaleKm, cfg.pxPerKm);
 }
 
+function updateWorldMapProgress(){
+  const total = placesData.length || 1;
+  const done = Object.keys(state.discovered||{}).length;
+  const pct = Math.min(100, Math.round(done/total*1000)/10);
+  const t = document.getElementById("worldmap-progress-text");
+  const pc = document.getElementById("worldmap-progress-pct");
+  const bar = document.getElementById("worldmap-progress-bar");
+  if (t) t.textContent = "蒐集進度 "+done+" / "+total;
+  if (pc) pc.textContent = pct+"%";
+  if (bar) bar.style.width = pct+"%";
+}
 function renderWorldMap(){
+  updateWorldMapProgress();
   const svg = document.getElementById("worldmap");
   svg.innerHTML = "";
   const ns = "http://www.w3.org/2000/svg";
@@ -5857,15 +5878,14 @@ function renderChallengeScreen(){
   const metGuideCount = Object.keys(state.metGuides||{}).length;
   const guideUnlocked = metGuideCount >= 10;
   const body = document.getElementById("challenge-body");
-  if (!fullUnlocked && !guideUnlocked){
-    const pct = Math.round(doneCount/total*100);
+  if (!guideUnlocked){
+    const pct = Math.round(metGuideCount/10*100);
     body.innerHTML =
       '<div class="paper-panel" style="padding:20px;">'+
       '<div class="detail-title">🔒 尚未解鎖</div>'+
-      '<div class="detail-body">收集全部 '+placesData.length+' 則地名記憶，或是認識滿 10 位縣市在地嚮導，即可開放挑戰模式！</div>'+
+      '<div class="detail-body">認識滿 10 位縣市在地嚮導，即可開放挑戰模式！</div>'+
       '<div class="progress-bar" style="margin-top:12px;"><i style="width:'+pct+'%"></i></div>'+
-      '<div style="font-size:.78rem;color:#7a6a4a;margin-top:6px;">地名進度：'+doneCount+' / '+total+'（'+pct+'%）</div>'+
-      '<div style="font-size:.78rem;color:#7a6a4a;margin-top:4px;">在地嚮導：'+metGuideCount+' / 10</div>'+
+      '<div style="font-size:.78rem;color:#7a6a4a;margin-top:6px;">在地嚮導：'+metGuideCount+' / 10</div>'+
       '</div>';
     return;
   }
@@ -6156,7 +6176,7 @@ document.getElementById("btn-about").addEventListener("click", ()=>{
     '<div style="margin-top:10px;font-size:.8rem;line-height:1.9;color:var(--ink-text);text-align:left;">'+
       '<div>遊戲製作設計：郭柏宏</div>'+
       '<div>版本號：20260923</div>'+
-      '<div style="margin-top:6px;">致謝詞：首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台574則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
+      '<div style="margin-top:6px;">致謝詞：首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台635則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
     '</div>'
     , {center:true});
 });
