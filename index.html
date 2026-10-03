@@ -372,6 +372,17 @@ body{
 .codex-card .cx-relation.friend{color:var(--jade-lt);}
 .codex-card .cx-relation.rival{color:#e08a5e;}
 
+/* ---------- 成就徽章 ---------- */
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
+.badge-card{background:rgba(253,243,218,.07);border:1px solid rgba(176,134,63,.55);border-radius:12px;padding:12px 8px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.badge-card .b-icon{font-size:2.1rem;line-height:1.2;}
+.badge-card .b-name{font-family:var(--serif);font-weight:700;color:var(--gold-lt);font-size:.88rem;margin-top:4px;}
+.badge-card .b-desc{font-size:.72rem;color:var(--mist);margin-top:3px;line-height:1.5;min-height:2.2em;}
+.badge-card .b-prog{font-size:.7rem;color:var(--mist);margin-top:6px;}
+.badge-card.locked{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04);box-shadow:none;}
+.badge-card.locked .b-icon{filter:grayscale(1);opacity:.35;}
+.badge-card.locked .b-name{color:var(--mist);}
+.badge-card.earned .b-prog{color:var(--gold-lt);font-weight:700;}
 /* ---------- 底部導覽 ---------- */
 .bottom-nav{
   position:fixed;left:0;right:0;bottom:0;max-width:920px;margin:0 auto;
@@ -687,13 +698,20 @@ body{
   <div id="challenge-body"></div>
 </div>
 
+<!-- ===================== 成就徽章 ===================== -->
+<div class="screen hidden" id="screen-badges">
+  <div class="section-title">🏅 成就徽章</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="badges-count"></div>
+  <div id="badges-body"></div>
+</div>
+
 <!-- ===================== 底部導覽 ===================== -->
 <div class="bottom-nav" id="bottom-nav">
   <button data-go="worldmap"><span class="bi">🧭</span>地圖</button>
   <button data-go="codex"><span class="bi">📖</span>圖鑑</button>
   <button data-go="challenge"><span class="bi">🏆</span>挑戰</button>
   <button data-go="people"><span class="bi">🧑‍🤝‍🧑</span>人物</button>
-  <button data-go="save"><span class="bi">💾</span>存檔</button>
+  <button data-go="badges"><span class="bi">🏅</span>徽章</button>
 </div>
 
 </div>
@@ -3405,7 +3423,7 @@ function regionStats(region){
 }
 
 // ---------- 畫面切換 ----------
-const screens = ["title","charselect","dialogue","worldmap","region","county","codex","people","challenge"];
+const screens = ["title","charselect","dialogue","worldmap","region","county","codex","people","challenge","badges"];
 let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂部狀態列置中位置
 function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
@@ -5870,6 +5888,63 @@ function updateChallengeHud(){
   curChapterLabel = challengeHudText();
 }
 
+// ---------- 成就徽章 ----------
+function computeBadges(){
+  const total = placesData.length;
+  const disc = Object.keys(state.discovered||{}).length;
+  const guideTotal = Object.keys(COUNTY_GUIDES).length;
+  const guides = Object.keys(state.metGuides||{}).length;
+  const protTotal = Math.max(1, Object.keys(CHAR_BY_KEY).length - (state.charKey ? 1 : 0));
+  const prots = Object.keys(state.metProtagonists||{}).length;
+  const compTotal = Object.keys(COMPANIONS).length;
+  const comps = (state.party||[]).length;
+  const counties = Object.keys(placesByCounty).filter(c => (placesByCounty[c]||[]).length);
+  const fullCounties = counties.filter(c => placesByCounty[c].every(pl => state.discovered[pl.id])).length;
+  const bestBy = state.challengeBestBy || {};
+  const boards = state.challengeBoards || {};
+  const played = Object.keys(boards).some(n => (boards[n]||[]).length) ? 1 : 0;
+  const perfect = Object.keys(bestBy).some(n => Number(n) > 0 && bestBy[n] >= Number(n)) ? 1 : 0;
+  const doneRegions = REGIONS.filter(r => state.regionDone[r.id]).length;
+  const list = [];
+  const add = (icon, name, desc, cur, max) => list.push({icon, name, desc, cur:Math.min(cur,max), max, earned:cur>=max});
+  // 地名收集
+  [[10,"🌱","初拾記憶"],[50,"🍃","地名拾荒者"],[100,"🌿","百則地名"],[200,"🌳","地名採集家"],[400,"🏞️","地名巡禮者"]].forEach(a=>{
+    add(a[1], a[2], "收集 "+a[0]+" 則地名記憶", disc, a[0]);
+  });
+  add("👑","地名全收錄","收集全部 "+total+" 則地名記憶", disc, total);
+  // 區域篇章
+  REGIONS.forEach(r => add("🗺️", r.name+"通關", "完成「"+r.name+"」的主線篇章", state.regionDone[r.id]?1:0, 1));
+  add("🧭","環島完成","完成所有區域的主線篇章", doneRegions, REGIONS.length);
+  // 縣市
+  add("📍","縣市收集達人","收集完一個縣市的全部地名", fullCounties, 1);
+  add("🏙️","十縣市達成","收集完 10 個縣市的全部地名", fullCounties, 10);
+  add("🇹🇼","全縣市達成","收集完所有縣市的全部地名", fullCounties, counties.length);
+  // 人物
+  add("🤝","初識嚮導","認識第 1 位縣市在地嚮導", guides, 1);
+  add("🧑‍🤝‍🧑","嚮導十人行","認識 10 位縣市在地嚮導（解鎖挑戰）", guides, 10);
+  add("🌟","嚮導全員到齊","認識全部 "+guideTotal+" 位縣市在地嚮導", guides, guideTotal);
+  add("🎓","主角群集合","遇見所有主角群成員", prots, protTotal);
+  add("🎒","旅伴同行","隊伍中有 3 位夥伴", comps, 3);
+  add("🏕️","夥伴到齊","集滿全部 "+compTotal+" 位隨行夥伴", comps, compTotal);
+  // 挑戰
+  add("⚔️","初試身手","完成一次自由挑戰", played, 1);
+  add("💯","滿分挑戰","在自由挑戰中拿下全對", perfect, 1);
+  return list;
+}
+function renderBadgesScreen(){
+  const list = computeBadges();
+  const got = list.filter(b=>b.earned).length;
+  document.getElementById("badges-count").textContent = "已獲得 "+got+" / "+list.length+" 枚徽章（"+Math.round(got/list.length*100)+"%）";
+  const sorted = list.filter(b=>b.earned).concat(list.filter(b=>!b.earned));
+  document.getElementById("badges-body").innerHTML = '<div class="badge-grid">'+sorted.map(b=>
+    '<div class="badge-card '+(b.earned?'earned':'locked')+'">'+
+      '<div class="b-icon">'+(b.earned?b.icon:'🔒')+'</div>'+
+      '<div class="b-name">'+escapeHtml(b.name)+'</div>'+
+      '<div class="b-desc">'+escapeHtml(b.desc)+'</div>'+
+      '<div class="b-prog">'+(b.earned?'✓ 已獲得':b.cur+' / '+b.max)+'</div>'+
+    '</div>').join("")+'</div>';
+}
+
 function renderChallengeScreen(){
   setBgmRegion(null);
   const total = placesData.length;
@@ -6005,7 +6080,7 @@ document.querySelectorAll("#bottom-nav button").forEach(btn=>{
     else if (go === "codex"){ setChapterLabel(""); renderCodex(); renderTopbar(); showScreen("codex"); }
     else if (go === "challenge"){ setChapterLabel(""); renderChallengeScreen(); renderTopbar(); showScreen("challenge"); }
     else if (go === "people"){ setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people"); }
-    else if (go === "save"){ openSaveModal(); }
+    else if (go === "badges"){ setChapterLabel(""); renderBadgesScreen(); renderTopbar(); showScreen("badges"); }
   });
 });
 
