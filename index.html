@@ -3031,8 +3031,16 @@ const BGM_FOLDER = "";   // 若把音樂放在子資料夾，改成 "audio/" 即
    AUTO_OFFLINE_DOWNLOAD = false → 打開遊戲後跳出提示列，按「下載」才開始 */
 const AUTO_OFFLINE_DOWNLOAD = false;
 
+/* ===== 版本號（日期，數字越大越新）=====
+   每次發佈新版：同時修改這裡的 APP_VERSION，以及 version.json 裡的 version（兩邊必須一致）。
+   玩家連網開啟遊戲時，會到網站讀取 version.json；若比自己的版本新，就會跳出更新提示。 */
+const APP_VERSION = "20261005";
+const VERSION_URL = "version.json";
+
 const Offline = (function(){
   const CACHE = "offline-pack-v1";
+  const PACK_VER_KEY = "offline-pack-version";            // 離線資料包上次下載／更新時對應的版本號
+  const PACK_DISMISS_KEY = "offline-pack-update-dismissed"; // 「稍後」：這個版本不再詢問
   const SNOOZE_KEY = "offline-pack-snooze-until";
   const supported = ("serviceWorker" in navigator) && ("caches" in window) && /^https?:$/.test(location.protocol);
   let ui = null, banner = null, busy = false;
@@ -3083,23 +3091,45 @@ const Offline = (function(){
       return;
     }
     const st = await status();
-    if (st.coreOk && st.audOk === st.audTotal) show("✅ 已可離線遊玩（圖檔＋音樂 " + st.audOk + "／" + st.audTotal + " 首都已存好）");
+    const pv = lsGet(PACK_VER_KEY);
+    const verTxt = pv ? ("（資料包版本 " + pv + (vnum(pv) < vnum(APP_VERSION) ? "，有新版本 " + APP_VERSION + " 可更新" : "，已是最新") + "）") : "（版本未記錄，建議更新一次）";
+    if (st.coreOk && st.audOk === st.audTotal) show("✅ 已可離線遊玩（圖檔＋音樂 " + st.audOk + "／" + st.audTotal + " 首都已存好）" + verTxt);
     else if (st.coreOk) show("⚠️ 圖檔已備妥，但音樂只存了 " + st.audOk + "／" + st.audTotal + " 首，請再按一次下載。");
     else show("尚未下載。建議在有網路（Wi-Fi）時下載，約 47 MB。");
   }
 
-  async function download(){
+  // 比對本機快取的檔案大小與網站上是否相同（用 HEAD 請求，不下載內容）
+  async function sameSize(cache, f){
+    try{
+      const old = await cache.match(f.url);
+      if (!old) return false;
+      const oldLen = +old.headers.get("content-length") || 0;
+      if (!oldLen) return false;
+      const h = await fetch(f.url, {method:"HEAD", cache:"no-store"});
+      const newLen = +h.headers.get("content-length") || 0;
+      return h.ok && newLen === oldLen;
+    }catch(e){ return false; }
+  }
+
+  // smart = true：只更新有變動的檔案（首頁一定更新；manifest 沒變的圖檔包、大小沒變的音樂會略過）
+  async function download(smart){
     if (busy || !supported) return;
+    smart = (smart === true);
     busy = true;
     const list = files(), totalW = list.reduce(function(a,f){ return a + f.w; }, 0) || 1;
-    let doneW = 0; const missing = [], failed = [];
+    let doneW = 0; const missing = [], failed = [], packSame = {};
     try{
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
       const cache = await caches.open(CACHE);
       for (let i = 0; i < list.length; i++){
         const f = list[i];
-        show("下載中：" + f.p, doneW / totalW);
+        show((smart ? "檢查更新：" : "下載中：") + f.p, doneW / totalW);
         try{
+          const isManifest = /\.manifest\.json$/.test(f.p), isPack = /\.pack$/.test(f.p);
+          if (smart && f.audio && await sameSize(cache, f)){ doneW += f.w; continue; }
+          if (smart && isPack && packSame[f.p.replace(/\.pack$/, ".manifest.json")] && await cache.match(f.url)){ doneW += f.w; continue; }
+          let oldText = null;
+          if (smart && isManifest){ const o = await cache.match(f.url); oldText = o ? await o.text() : null; }
           const res = await fetch(f.url, {cache:"reload"});
           const type = res.headers.get("content-type") || "";
           if (!res.ok || (f.audio && /text\/html/i.test(type))) throw new Error("missing");
@@ -3110,10 +3140,11 @@ const Offline = (function(){
             for (;;){
               const r = await rd.read(); if (r.done) break;
               chunks.push(r.value); got += r.value.length;
-              if (len) show("下載中：" + f.p + "（" + Math.round(got/len*100) + "%）", (doneW + f.w * got/len) / totalW);
+              if (len) show((smart ? "更新中：" : "下載中：") + f.p + "（" + Math.round(got/len*100) + "%）", (doneW + f.w * got/len) / totalW);
             }
           } else { chunks.push(new Uint8Array(await res.arrayBuffer())); }
           const blob = new Blob(chunks, {type: type});
+          if (smart && isManifest) packSame[f.p] = (oldText != null && oldText === await blob.text());
           await cache.put(f.url, new Response(blob, {status:200, headers:{"Content-Type": type || (f.audio ? "audio/mpeg" : "application/octet-stream"), "Content-Length": String(blob.size)}}));
         }catch(e){
           if (f.audio) missing.push(f.p); else if (!f.page) failed.push(f.p);
@@ -3121,10 +3152,11 @@ const Offline = (function(){
         doneW += f.w;
       }
       const bad = failed.length || missing.length;
+      if (!bad) lsSet(PACK_VER_KEY, APP_VERSION);      // 完整下載／更新成功才記錄版本
       await refresh();
       if (bad) show("⚠️ 有檔案下載失敗（" + failed.concat(missing).join("、") + "），請檢查網路後重試。", null);
-      else show("✅ 離線資料包下載完成！之後沒有網路也能玩。", null);
-      if (typeof toast === "function") toast(bad ? "離線資料包未完整下載" : "離線資料包下載完成");
+      else show(smart ? "✅ 離線資料包已更新到版本 " + APP_VERSION + "！" : "✅ 離線資料包下載完成！之後沒有網路也能玩。", null);
+      if (typeof toast === "function") toast(bad ? "離線資料包未完整下載" : (smart ? "離線資料包已更新" : "離線資料包下載完成"));
       if (banner && banner.el.isConnected){
         banner.btns.style.display = bad ? "flex" : "none";
         banner.dl.textContent = "重試";
@@ -3143,23 +3175,113 @@ const Offline = (function(){
 
   function closeBanner(){ if (banner){ banner.el.remove(); banner = null; } }
 
-  function openBanner(){
+  // kind = "install"：第一次下載；kind = "update"：偵測到離線資料包版本較舊，詢問是否更新
+  function openBanner(kind, oldVer){
     if (banner) return;
+    kind = kind || "install";
     const el = document.createElement("div");
     el.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;max-width:520px;margin:0 auto;z-index:10001;padding:12px 14px;border-radius:12px;background:#efe4c9;color:#2b2119;border:1px solid #c9b489;box-shadow:0 6px 20px rgba(0,0,0,.45);font-size:.85rem;line-height:1.6";
+    const title = kind === "update" ? "📦 離線資料包有新版本" : "📦 下載離線資料包？";
+    const msg = kind === "update"
+      ? "你的離線資料包是版本 " + (oldVer || "（未記錄）") + "，最新版本是 " + APP_VERSION + "。要現在更新嗎？只會更新有變動的檔案，沒有變動的音樂與圖檔不會重新下載。"
+      : "下載後沒有網路也能玩（圖檔＋音樂，約 47 MB，建議使用 Wi-Fi）。";
     el.innerHTML =
-      '<div style="font-weight:700;margin-bottom:2px">📦 下載離線資料包？</div>'+
-      '<div class="ob-msg">下載後沒有網路也能玩（圖檔＋音樂，約 47 MB，建議使用 Wi-Fi）。</div>'+
+      '<div style="font-weight:700;margin-bottom:2px">' + title + '</div>'+
+      '<div class="ob-msg">' + msg + '</div>'+
       '<div class="ob-bar" style="display:none;height:9px;border-radius:5px;background:rgba(0,0,0,.18);overflow:hidden;margin:6px 0"><div class="ob-fill" style="height:100%;width:0;background:#4f7a63;transition:width .2s"></div></div>'+
-      '<div class="ob-btns" style="display:flex;gap:8px;margin-top:8px"><button class="brass-btn small ob-dl">⬇ 下載</button><button class="brass-btn small ghost ob-later">稍後</button></div>';
+      '<div class="ob-btns" style="display:flex;gap:8px;margin-top:8px"><button class="brass-btn small ob-dl">' + (kind === "update" ? "🔄 更新" : "⬇ 下載") + '</button><button class="brass-btn small ghost ob-later">稍後</button></div>';
     document.body.appendChild(el);
     banner = { el: el, msg: el.querySelector(".ob-msg"), barWrap: el.querySelector(".ob-bar"), fill: el.querySelector(".ob-fill"),
                btns: el.querySelector(".ob-btns"), dl: el.querySelector(".ob-dl") };
-    banner.dl.addEventListener("click", function(){ banner.btns.style.display = "none"; download(); });
+    banner.dl.addEventListener("click", function(){ banner.btns.style.display = "none"; download(kind === "update"); });
     el.querySelector(".ob-later").addEventListener("click", function(){
-      lsSet(SNOOZE_KEY, String(Date.now() + 3*24*3600*1000));   // 稍後：3 天內不再提示（仍可到 ⚙️ 設定手動下載）
+      if (kind === "update") lsSet(PACK_DISMISS_KEY, APP_VERSION);        // 這個版本不再詢問（仍可到 ⚙️ 設定手動更新）
+      else lsSet(SNOOZE_KEY, String(Date.now() + 3*24*3600*1000));          // 稍後：3 天內不再提示（仍可到 ⚙️ 設定手動下載）
       closeBanner();
     });
+  }
+
+  // ---------- 遊戲版本更新（版本號為日期，數字越大越新）----------
+  function vnum(v){ return parseInt(String(v == null ? "" : v).replace(/\D/g, ""), 10) || 0; }
+
+  async function fetchRemoteVersion(){
+    const url = new URL(VERSION_URL, new URL(".", location.href)).href + "?t=" + Date.now();
+    const res = await fetch(url, {cache:"no-store"});
+    if (!res.ok) throw new Error("version.json HTTP " + res.status);
+    const j = await res.json();
+    return String((j && j.version) || "");
+  }
+
+  // 立即抓取最新的遊戲資料：首頁、圖檔資源包 manifest（資源包本體在重新載入後由原本的機制自動更新）
+  async function refreshCore(setProg){
+    const base = new URL(".", location.href);
+    const targets = [new URL("index.html", base).href, location.origin + location.pathname,
+                     new URL("assets/characters.manifest.json", base).href, new URL("assets/scenes.manifest.json", base).href];
+    let cache = null, have = new Set();
+    try{ if ("caches" in window){ cache = await caches.open(CACHE); have = new Set((await cache.keys()).map(function(r){ return r.url; })); } }catch(e){ cache = null; }
+    for (let i = 0; i < targets.length; i++){
+      setProg(i / targets.length);
+      const res = await fetch(targets[i], {cache:"reload"});
+      if (!res.ok) { if (i >= 2) continue; throw new Error(targets[i] + " HTTP " + res.status); }
+      if (cache && have.has(targets[i])) await cache.put(targets[i], res.clone());
+      else await res.arrayBuffer();
+    }
+    setProg(1);
+    try{ const reg = await navigator.serviceWorker.getRegistration(); if (reg) reg.update(); }catch(e){}
+  }
+
+  function openUpdateDialog(remote){
+    if (document.getElementById("app-update-dlg")) return;
+    try{ sessionStorage.setItem("app-update-tried", remote); }catch(e){}   // 同一個分頁只自動處理一次，避免網站尚未完全發佈時一直重新載入
+    const ov = document.createElement("div");
+    ov.id = "app-update-dlg";
+    ov.style.cssText = "position:fixed;inset:0;z-index:10003;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:16px";
+    ov.innerHTML =
+      '<div style="max-width:420px;width:100%;background:#efe4c9;color:#2b2119;border:1px solid #c9b489;border-radius:14px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:.92rem;line-height:1.75">'+
+        '<div style="font-weight:700;font-size:1.05rem;margin-bottom:6px">🆕 發現新版本</div>'+
+        '<div>目前版本：<b>' + APP_VERSION + '</b><br>最新版本：<b>' + remote + '</b></div>'+
+        '<div class="ud-msg" style="margin-top:8px">正在更新遊戲資料…</div>'+
+        '<div style="height:9px;border-radius:5px;background:rgba(0,0,0,.18);overflow:hidden;margin:8px 0"><div class="ud-fill" style="height:100%;width:0;background:#4f7a63;transition:width .2s"></div></div>'+
+        '<div class="ud-btns" style="display:none;gap:8px;margin-top:8px"><button class="brass-btn small ud-now">🔄 立即重新載入</button><button class="brass-btn small ghost ob-later ud-later">稍後再說</button></div>'+
+      '</div>';
+    document.body.appendChild(ov);
+    const msg = ov.querySelector(".ud-msg"), fill = ov.querySelector(".ud-fill"), btns = ov.querySelector(".ud-btns");
+    const nowBtn = ov.querySelector(".ud-now"), laterBtn = ov.querySelector(".ud-later");
+    let timer = null, left = 3;
+    function reload(){ if (timer) clearInterval(timer); location.reload(); }
+    nowBtn.addEventListener("click", reload);
+    laterBtn.addEventListener("click", function(){ if (timer) clearInterval(timer); ov.remove(); });
+    (async function(){
+      try{
+        if (typeof autosave === "function"){ try{ autosave(); }catch(e){} }   // 先自動存檔，避免進度遺失
+        await refreshCore(function(f){ fill.style.width = Math.round(f * 100) + "%"; });
+        msg.textContent = "✅ 已取得新版本資料，進度已自動存檔。" + left + " 秒後自動重新載入以套用新版。";
+        btns.style.display = "flex";
+        timer = setInterval(function(){
+          left--;
+          if (left <= 0) reload();
+          else msg.textContent = "✅ 已取得新版本資料，進度已自動存檔。" + left + " 秒後自動重新載入以套用新版。";
+        }, 1000);
+      }catch(err){
+        msg.textContent = "更新失敗：" + (err && err.message ? err.message : err) + "。請檢查網路後重新開啟遊戲。";
+        nowBtn.textContent = "🔄 重新整理";
+        btns.style.display = "flex";
+      }
+    })();
+  }
+
+  let lastCheck = 0;
+  // 回傳 true 表示已跳出更新提示（頁面即將重新載入）
+  async function checkUpdate(){
+    if (!/^https?:$/.test(location.protocol) || !navigator.onLine) return false;
+    lastCheck = Date.now();
+    let remote = "";
+    try{ remote = await fetchRemoteVersion(); }catch(e){ return false; }
+    if (vnum(remote) <= vnum(APP_VERSION)) return false;
+    let tried = null; try{ tried = sessionStorage.getItem("app-update-tried"); }catch(e){}
+    if (tried === remote) return false;
+    openUpdateDialog(remote);
+    return true;
   }
 
   function whenGameReady(cb){
@@ -3173,18 +3295,29 @@ const Offline = (function(){
 
   async function startup(){
     try{
-      await navigator.serviceWorker.register("sw.js");
+      if (!/^https?:$/.test(location.protocol)) return;
+      if (supported){ try{ await navigator.serviceWorker.register("sw.js"); }catch(e){ console.warn("sw register", e); } }
       if (!navigator.onLine) return;                       // 已離線就不用提示
+      if (await checkUpdate()) return;                     // 發現新版本：先更新遊戲資料並重新載入
+      if (!supported) return;
       const st = await status();
-      if (st.coreOk && st.audOk === st.audTotal) return;   // 已經下載完整
+      if (st.coreOk && st.audOk === st.audTotal){          // 離線資料包已完整下載
+        const pv = lsGet(PACK_VER_KEY);
+        if (vnum(pv) < vnum(APP_VERSION) && lsGet(PACK_DISMISS_KEY) !== APP_VERSION) openBanner("update", pv);
+        return;
+      }
       if (AUTO_OFFLINE_DOWNLOAD){ download(); return; }
       if (Date.now() < Number(lsGet(SNOOZE_KEY) || 0)) return;
-      openBanner();
+      openBanner("install");
     }catch(e){ console.warn('offline startup', e); }
   }
 
-  if (supported){
+  if (/^https?:$/.test(location.protocol)){
     window.addEventListener("load", function(){ whenGameReady(startup); });
+    // 分頁久開：切回來時，若距離上次檢查超過 30 分鐘，再檢查一次是否有新版本
+    document.addEventListener("visibilitychange", function(){
+      if (document.visibilityState === "visible" && Date.now() - lastCheck > 30*60*1000) checkUpdate();
+    });
   }
 
   function bind(root){
@@ -6371,7 +6504,7 @@ document.getElementById("btn-about").addEventListener("click", ()=>{
     '<div class="detail-title">關於</div>'+
     '<div style="margin-top:10px;font-size:.8rem;line-height:1.9;color:var(--ink-text);text-align:left;">'+
       '<div>遊戲製作設計：郭柏宏</div>'+
-      '<div>版本號：20261005</div>'+
+      '<div>版本號：'+APP_VERSION+'</div>'+
       '<div style="margin-top:6px;">致謝詞：首先感謝我的太太，給予意見與測試，是她默默的在背後支持我，這款遊戲才能順利產出。全台635則地名記憶得以化作旅程，等待玩家拾起，大家一起來冒險吧！</div>'+
     '</div>'
     , {center:true});
