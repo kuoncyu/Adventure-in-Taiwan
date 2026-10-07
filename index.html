@@ -377,6 +377,19 @@ body{
 .codex-card .cx-relation.friend{color:var(--jade-lt);}
 .codex-card .cx-relation.rival{color:#e08a5e;}
 
+/* ---------- 道具 ---------- */
+.item-ico{background-repeat:no-repeat;background-color:#efe4c9;background-blend-mode:multiply;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(120,90,40,.35);line-height:1;}
+.item-ico.empty{background:rgba(255,255,255,.07);color:var(--mist);font-weight:700;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-bottom:16px;}
+.item-slot{background:rgba(253,243,218,.07);border:1px solid rgba(176,134,63,.5);border-radius:12px;padding:10px 6px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.item-slot .nm{font-size:.74rem;color:var(--gold-lt);font-weight:700;line-height:1.35;}
+.item-slot.locked{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04);}
+.item-slot.locked .nm{color:var(--mist);}
+.item-mini{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;}
+.item-mini .item-slot{width:74px;padding:6px 4px;}
+.chain-card.locked{opacity:.88;border-left-color:#8a5a3c;}
+.chain-card .chain-lock{font-size:.74rem;color:#f0c27b;margin-top:6px;line-height:1.55;}
+.chain-card .chain-reward{font-size:.72rem;color:var(--gold-lt);margin-top:4px;}
 /* ---------- 成就徽章 ---------- */
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
 .badge-card{background:rgba(253,243,218,.07);border:1px solid rgba(176,134,63,.55);border-radius:12px;padding:12px 8px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.2);}
@@ -669,6 +682,8 @@ body{
 
   <div id="county-protagonists-section"></div>
 
+  <div id="county-items-section"></div>
+
   <div class="section-title" style="font-size:1rem;">🗺️ 主線任務鏈</div>
   <div class="chain-list" id="county-main-chains"></div>
 
@@ -716,6 +731,14 @@ body{
   <div id="badges-body"></div>
 </div>
 
+<!-- ===================== 物品欄 ===================== -->
+<div class="screen hidden" id="screen-inventory">
+  <div class="section-title">🎒 物品</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:8px;" id="inventory-count"></div>
+  <select id="inventory-filter" style="align-self:flex-start;padding:8px 10px;border-radius:8px;background:#1d2b2a;color:var(--paper);border:1px solid rgba(176,134,63,.5);margin-bottom:12px;"></select>
+  <div id="inventory-body"></div>
+</div>
+
 <!-- ===================== 底部導覽 ===================== -->
 <div class="bottom-nav" id="bottom-nav">
   <button data-go="worldmap"><span class="bi">🧭</span>地圖</button>
@@ -723,6 +746,7 @@ body{
   <button data-go="challenge"><span class="bi">🏆</span>挑戰</button>
   <button data-go="people"><span class="bi">🧑‍🤝‍🧑</span>人物</button>
   <button data-go="badges"><span class="bi">🏅</span>徽章</button>
+  <button data-go="inventory"><span class="bi">🎒</span>物品</button>
 </div>
 
 </div>
@@ -3034,7 +3058,7 @@ const AUTO_OFFLINE_DOWNLOAD = false;
 /* ===== 版本號（日期，數字越大越新）=====
    每次發佈新版：同時修改這裡的 APP_VERSION，以及 version.json 裡的 version（兩邊必須一致）。
    玩家連網開啟遊戲時，會到網站讀取 version.json；若比自己的版本新，就會跳出更新提示。 */
-const APP_VERSION = "20261005";
+const APP_VERSION = "20261006";
 const VERSION_URL = "version.json";
 
 const Offline = (function(){
@@ -3052,7 +3076,8 @@ const Offline = (function(){
     const base = new URL(".", location.href);
     const list = [
       {p:"index.html", w:2}, {p:"assets/characters.manifest.json", w:.01}, {p:"assets/characters.pack", w:15},
-      {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7}
+      {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7},
+      {p:"assets/items.png", w:.5, opt:true}, {p:"assets/items.webp", w:.5, opt:true}, {p:"assets/items.jpg", w:.5, opt:true}   // 道具集合圖（可選，沒有就略過）
     ];
     Object.keys(BGM_FILES).forEach(function(k){ list.push({p:BGM_FOLDER + BGM_FILES[k], w:4.3, audio:true}); });
     const out = list.map(function(f){ f.url = new URL(f.p, base).href; return f; });
@@ -3079,7 +3104,7 @@ const Offline = (function(){
     const cache = await caches.open(CACHE);
     const have = new Set((await cache.keys()).map(function(r){ return r.url; }));
     const list = files();
-    const core = list.filter(function(f){ return !f.audio; });
+    const core = list.filter(function(f){ return !f.audio && !f.opt; });
     const aud = list.filter(function(f){ return f.audio; });
     return { coreOk: core.every(function(f){ return have.has(f.url); }),
              audOk: aud.filter(function(f){ return have.has(f.url); }).length, audTotal: aud.length };
@@ -3147,7 +3172,7 @@ const Offline = (function(){
           if (smart && isManifest) packSame[f.p] = (oldText != null && oldText === await blob.text());
           await cache.put(f.url, new Response(blob, {status:200, headers:{"Content-Type": type || (f.audio ? "audio/mpeg" : "application/octet-stream"), "Content-Length": String(blob.size)}}));
         }catch(e){
-          if (f.audio) missing.push(f.p); else if (!f.page) failed.push(f.p);
+          if (f.audio) missing.push(f.p); else if (!f.page && !f.opt) failed.push(f.p);
         }
         doneW += f.w;
       }
@@ -3495,7 +3520,7 @@ function resetState(){
   state = { playerName:"旅人", charKey:null, gender:null, homeRegion:"north",
             discovered:{}, loreScore:0, regionDone:{}, party:[], seenIntro:false, challengeBest:0,
             challengeBestBy:{}, challengeBoards:{}, challengeSeq:0,
-            metGuides:{}, metProtagonists:{} };
+            metGuides:{}, metProtagonists:{}, items:{}, delivered:{} };
 }
 
 // 目前主角 / 顯示名稱
@@ -3567,14 +3592,13 @@ function regionStats(region){
 }
 
 // ---------- 畫面切換 ----------
-const screens = ["title","charselect","dialogue","worldmap","region","county","codex","people","challenge","badges"];
+const screens = ["title","charselect","dialogue","worldmap","region","county","codex","people","challenge","badges","inventory"];
 let curChapterLabel = ""; // 目前所在的篇章／單元標題，顯示於頂部狀態列置中位置
 function setChapterLabel(t){ curChapterLabel = t || ""; renderTopbar(); }
 let curBgmRegion = null;   // 目前劇情所在區域，決定要播哪一首區域音樂
 function setBgmRegion(rid){ curBgmRegion = rid || null; }
 function syncBgm(screenId){
   const inField = (screenId==="region" || screenId==="county" || screenId==="dialogue");
-  if (screenId==="challenge"){ Audio_.play("challenge"); return; }
   Audio_.play(inField && curBgmRegion && BGM_FILES[curBgmRegion] ? curBgmRegion : "lobby");
 }
 function showScreen(id){
@@ -3627,6 +3651,42 @@ function unlockContent(u){
       '<div class="detail-title" style="text-align:center;font-size:1.3rem;">🗺️ '+escapeHtml(r.name)+'</div>'+
       '<div class="detail-old" style="text-align:center;">'+escapeHtml(r.title||"")+'</div>'+
       '<div class="detail-body">'+escapeHtml(r.desc||"")+'<div style="margin-top:8px;">現在可以從地圖進入這一區，開始新的旅程了！</div></div>'};
+  }
+  if (u.type === "item"){
+    const d = ITEM_BY_ID[u.key]; if (!d) return null;
+    const g = COUNTY_GUIDES[COUNTY_TO_GUIDE[d.county]];
+    const opens = itemOpens(d.id).filter(function(o){ return chainLocks(o.chain).length === 0; })
+      .map(function(o){ return '<div style="margin:3px 0;">🔓 ' + escapeHtml(o.county + "．" + chainShortTitle(o.chain)) + '</div>'; }).join("");
+    return {label:"獲得新道具", html:
+      '<div style="text-align:center;margin-bottom:8px;">' + itemIconHtml(d, 104) + '</div>'+
+      '<div class="detail-title" style="text-align:center;">' + escapeHtml(d.name) + '</div>'+
+      '<div class="detail-old" style="text-align:center;">' + escapeHtml(d.county) + '・在地道具</div>'+
+      '<div class="detail-body">' + escapeHtml(d.desc) + '</div>'+
+      (g ? '<div class="detail-body" style="margin-top:6px;">' + g.icon + ' ' + escapeHtml(g.name) + '：「' + escapeHtml(d.say) + '」</div>' : '')+
+      (opens ? '<div class="detail-body" style="margin-top:6px;"><b>🔑 這件道具開啟了：</b>' + opens + '</div>' : '')};
+  }
+  if (u.type === "regionitem"){
+    const rid = u.key, d = ITEM_BY_ID[REGION_ITEM[rid]]; if (!d) return null;
+    const plan = deliveryPlan()[rid];
+    const giver = plan ? CHAR_BY_KEY[plan.giver] : null, recv = plan ? CHAR_BY_KEY[plan.receiver] : null;
+    const sc = plan ? DELIVERY_SCRIPTS[plan.key] : null;
+    const roadAuto = incomingDeliveries(rid).length === 0;
+    return {label:"主線通關・獲得道具", html:
+      '<div style="text-align:center;margin-bottom:8px;">' + itemIconHtml(d, 104) + '</div>'+
+      '<div class="detail-title" style="text-align:center;">' + escapeHtml(d.name) + '</div>'+
+      '<div class="detail-old" style="text-align:center;">' + escapeHtml(regionTitleOf(rid)) + '・通關獎勵</div>'+
+      '<div class="detail-body">' + escapeHtml(d.desc) + '</div>'+
+      (plan && sc ? '<div class="detail-body" style="margin-top:8px;">' + giver.icon + ' ' + escapeHtml(giver.name) + '：「' + escapeHtml(sc.give) + '」</div>'+
+        '<div class="detail-body" style="margin-top:6px;"><b>📦 託付任務：</b>把「' + escapeHtml(d.name) + '」交給 ' + escapeHtml(recv.name) + '（' + escapeHtml(plan.county) + '）。帶著它走進那個縣市，對話就會自動開始，完成後會開啟更多劇情。</div>' : '')+
+      '<div class="detail-body" style="margin-top:6px;"><b>🔓 已開啟：</b>' + escapeHtml(regionNameOf(rid)) + '各縣市的「支線任務」' + (roadAuto ? '與「路名任務鏈」' : '') + '</div>'};
+  }
+  if (u.type === "delivery"){
+    const d = deliveryPlan()[u.key]; if (!d) return null;
+    const it = ITEM_BY_ID[d.item], r = CHAR_BY_KEY[d.receiver];
+    return {label:"託付完成", html:
+      '<div style="text-align:center;margin-bottom:8px;">' + itemIconHtml(it, 84) + '</div>'+
+      '<div class="detail-title" style="text-align:center;">' + escapeHtml(r.name) + '收下了「' + escapeHtml(it.name) + '」</div>'+
+      '<div class="detail-body" style="margin-top:8px;"><b>🔓 已開啟：</b>' + escapeHtml(regionNameOf(d.receiverRegion)) + '各縣市的「路名任務鏈」</div>'};
   }
   if (u.type === "challenge"){
     return {label:"解鎖新玩法", html:
@@ -5122,6 +5182,7 @@ function startMainQuest(regionId){
       // 柯世安改為在第一區「登場劇情播放到的那一刻」才入隊（見 buildMainQuestSteps 的 ksIntroSteps），這裡不再重複處理
       if (region.extraCompanion && state.party.indexOf(region.extraCompanion)===-1){ state.party.push(region.extraCompanion); queueUnlock({type:"companion", key:region.extraCompanion}); }
       { const ord = regionOrder(), ri = ord.indexOf(regionId); if (ri >= 0 && ri+1 < ord.length) queueUnlock({type:"region", key:ord[ri+1]}); }
+      grantRegionItem(regionId);      // 主線通關：獲得該區道具、開啟支線任務、接下託付
       sfx("complete");
       toast("🎉 已完成「"+region.title+"」");
       renderTopbar();
@@ -5204,6 +5265,7 @@ function playChain(county, kind, idx){
   if (!cc) return;
   const chain = (kind==="main" ? cc.mainChains : cc.sideQuests)[idx];
   if (!chain) return;
+  if (chainIsLocked(chain)){ showChainLockModal(chain); return; }
   // 首次遇到該縣市的在地嚮導：先播放一段見面之詞與自我介紹，再進入本次劇情，
   // 播放結束後才記錄進圖鑑並提示玩家（避免登場太唐突）；已認識過的嚮導則不再重複。
   const gk = COUNTY_TO_GUIDE[county];
@@ -5222,6 +5284,7 @@ function playChain(county, kind, idx){
       if (guideCountBefore === 9) queueUnlock({type:"challenge", key:"guide10"});
     }
     setChapterLabel("");
+    grantItems(true);       // 完成任務鏈後，發放道具（彈窗在回到縣市畫面時顯示）
     renderCountyScreen(county);
     showScreen("county");
   });
@@ -5626,6 +5689,326 @@ function renderRegionScreen(regionId){
 // ---------- 縣市探索頁 ----------
 let currentCounty = null;
 
+/* ===================== 道具系統 =====================
+   · 道具圖：把「道具集合圖」放到 assets/items.png（也接受 items.webp / items.jpg），
+     集合圖為 9 欄 × 9 列的等分方格，順序＝ ITEM_DEFS 的順序（由左到右、由上到下）。沒有圖時以 emoji 代替。
+   · 縣市任務鏈：完成（地名全部收集）後，依 ITEM_REWARDS 獲得道具；縣市「主線任務鏈」可能需要先持有道具（ITEM_GATES）。
+   · 區域主線：每區主線劇情通關，獲得該區的一件道具（REGION_ITEM），並開啟該區各縣市的「支線任務」。
+   · 託付：區域道具會由主角群託你帶給另一位主角群；帶著道具走進對方的家鄉縣市，就會自動觸發交付對話，
+     完成後開啟對方所在區域各縣市的「路名任務鏈」。若該區沒有託付可接收，路名任務鏈在該區主線通關後直接開啟。 */
+const ITEM_SHEET = {cols:9, rows:9, files:["assets/items.png","assets/items.webp","assets/items.jpg"]};
+const ITEM_DEFS = [{"id": "it01", "county": "基隆市", "name": "鼎邊趖", "emoji": "🍲", "desc": "基隆廟口的招牌小吃，米漿沿著鍋邊澆一圈蒸熟，再放進湯裡煮，所以叫「鼎邊趖」。", "say": "來，先喝一碗熱的鼎邊趖，這是我阿嬤的做法，喝完你就是自己人了。"}, {"id": "it02", "county": "基隆市", "name": "營養三明治", "emoji": "🥪", "desc": "基隆廟口的在地小吃，炸得酥酥的麵包夾著小黃瓜、火腿和滷蛋，再淋上一層美乃滋。", "say": "這個營養三明治我阿公最愛，口味很老派，可是真的很好吃，給你。"}, {"id": "it03", "county": "基隆市", "name": "彩色屋明信片", "emoji": "🏠", "desc": "正濱漁港那一排色彩鮮豔的房屋，是基隆漁港近年最受歡迎的拍照景點。", "say": "這張明信片送你，上面就是正濱漁港那排彩色屋，我小時候它們還是灰的。"}, {"id": "it04", "county": "台北市", "name": "小籠包", "emoji": "🥟", "desc": "皮薄、餡多、一咬就有湯汁的蒸籠點心，是台北最具代表性的美食之一。", "say": "吃吧，小籠包要趁熱，我說的『先咬一小口、再吸湯』是真的。"}, {"id": "it05", "county": "台北市", "name": "文山包種茶", "emoji": "🍵", "desc": "產自台北文山一帶的茶，茶湯清香，顏色蜜綠，是北部的代表名茶。", "say": "這包文山包種茶，是我家裡人會拿來待客的，你帶著吧。"}, {"id": "it06", "county": "台北市", "name": "迪化街南北貨", "emoji": "🏮", "desc": "迪化街是台北最有名的年貨大街，以南北貨、中藥材與布料聞名。", "say": "這袋是迪化街買來的乾貨，過年都靠它們，今天先讓你拿一份。"}, {"id": "it07", "county": "台北市", "name": "牛肉麵", "emoji": "🍜", "desc": "台北每年都有牛肉麵節，湯頭、麵條與牛肉的搭配各家不同，是老台北人的味道。", "say": "一碗牛肉麵送你，湯一定要喝完，這是台北人的規矩。"}, {"id": "it08", "county": "新北市", "name": "淡水阿給", "emoji": "🍢", "desc": "淡水的在地小吃，把油豆腐挖空塞進冬粉，再用魚漿封口、淋上特製醬汁。", "say": "淡水阿給！拿去，邊走邊吃，我覺得這是最適合爬山前的補給。"}, {"id": "it09", "county": "新北市", "name": "九份芋圓", "emoji": "🍡", "desc": "九份老街的招牌甜點，用芋頭與地瓜粉揉成Q彈的小圓塊，冷熱都能吃。", "say": "九份的芋圓，Q到可以彈牙，我每次去都要買兩碗，這碗送你。"}, {"id": "it10", "county": "新北市", "name": "鶯歌陶杯", "emoji": "🏺", "desc": "鶯歌自清代起就是陶瓷產地，素樸的陶杯保留了手拉坯的紋路。", "say": "這只陶杯是在鶯歌挑的，握起來暖暖的，希望它陪你走遠一點。"}, {"id": "it11", "county": "新北市", "name": "猴硐貓咪玩偶", "emoji": "🐱", "desc": "猴硐原本是煤礦小鎮，因為許多貓咪在這裡聚集，成為遠近知名的貓村。", "say": "這隻貓咪玩偶送你，猴硐的貓比我還愛睡，你要記得替我摸牠們一下。"}, {"id": "it12", "county": "桃園市", "name": "大溪豆干", "emoji": "🟫", "desc": "大溪是有名的豆干產地，豆干用滷汁慢慢滷到入味，色深味香，是大溪老街最受歡迎的伴手禮。", "say": "大溪豆干，我一次吃兩塊都不會膩，你先嘗一塊，剩下的帶著路上吃。"}, {"id": "it13", "county": "桃園市", "name": "客家擂茶", "emoji": "🍵", "desc": "客家人把茶葉、花生、芝麻等磨成粉，再沖入熱水飲用，是桃竹苗客家庄常見的飲品。", "say": "擂茶要自己磨才有味道，這碗給你，趁熱喝，花生香很濃。"}, {"id": "it14", "county": "桃園市", "name": "龍岡米干", "emoji": "🍜", "desc": "龍岡有許多來自滇緬的軍民與家庭，米干是當地很有名的雲南風味小吃。", "say": "龍岡的米干是雲南味，我第一次吃還以為是河粉，結果更有嚼勁。"}, {"id": "it15", "county": "桃園市", "name": "拉拉山水蜜桃", "emoji": "🍑", "desc": "拉拉山一帶是桃園有名的水蜜桃產區，高山的溫差讓果實特別甜。", "say": "這顆拉拉山水蜜桃剛摘的，要輕輕拿，不然會壓傷，送你吃。"}, {"id": "it16", "county": "新竹市", "name": "新竹米粉", "emoji": "🍜", "desc": "新竹的九降風又乾又強，很適合曬米粉，所以新竹米粉特別有名。", "say": "新竹米粉，風越大曬得越好，你今天吹到的風，剛好就是它的功臣。"}, {"id": "it17", "county": "新竹市", "name": "新竹貢丸", "emoji": "⚪", "desc": "新竹貢丸以Q彈的口感出名，是新竹最具代表性的小吃之一。", "say": "貢丸要咬一口才知道彈不彈，這顆給你，我保證咬下去會有聲音。"}, {"id": "it18", "county": "新竹市", "name": "新竹玻璃工藝品", "emoji": "🔮", "desc": "新竹是台灣玻璃工業與玻璃工藝的重要產地，市區內有專門介紹玻璃的博物館。", "say": "這個玻璃小擺飾是新竹的驕傲，你拿它對著光看，裡面有顏色在流動。"}, {"id": "it19", "county": "新竹縣", "name": "新埔柿餅", "emoji": "🟧", "desc": "新埔的柿餅靠九降風曬乾，口感軟中帶Q，是新竹縣最有名的特產之一。", "say": "新埔柿餅，要吹過風才會甜，阿婆年年都曬，你帶幾顆走。"}, {"id": "it20", "county": "新竹縣", "name": "客家粄條", "emoji": "🍜", "desc": "客家粄條是用米漿蒸成的寬麵條，口感滑嫩，是客家庄常見的主食。", "say": "粄條要吃熱的，來，阿婆煮的，不夠再拿。"}, {"id": "it21", "county": "新竹縣", "name": "北埔擂茶", "emoji": "🍵", "desc": "北埔是客家古鎮，擂茶是老街上最受歡迎的客家飲品。", "say": "北埔的擂茶，味道比外面的更重一點，是阿婆特地留給你的。"}, {"id": "it22", "county": "新竹縣", "name": "東方美人茶", "emoji": "🍃", "desc": "茶葉被小綠葉蟬叮咬後才會形成獨特的蜜香，這種茶就叫東方美人茶，新竹縣的北埔、峨眉、橫山都是產區。", "say": "這是東方美人茶，要被蟲咬過才有味道，很奇妙吧？送你，慢慢喝。"}, {"id": "it23", "county": "苗栗縣", "name": "客家菜包", "emoji": "🥟", "desc": "客家菜包用米皮包著蘿蔔絲、蝦米與香菇，是客家庄常見的點心。", "say": "這是我阿姆包的菜包，你吃吃看，如果不好吃我再拿給你一顆。"}, {"id": "it24", "county": "苗栗縣", "name": "大湖草莓", "emoji": "🍓", "desc": "大湖鄉是台灣最有名的草莓產地，每年冬春之際就是採草莓的季節。", "say": "大湖的草莓，我阿姆說要看顏色，紅透了才好吃，這顆給你。"}, {"id": "it25", "county": "苗栗縣", "name": "三義木雕", "emoji": "🪵", "desc": "三義是台灣有名的木雕重鎮，發展起源與當地的樟樹與樟腦業有關。", "say": "這是三義的木雕，聞聞看，有樟木的味道，我阿姆說它能驅蟲。"}, {"id": "it26", "county": "苗栗縣", "name": "油桐花", "emoji": "🌸", "desc": "每年四到五月，苗栗的山區會開滿雪白的油桐花，客家庄還會舉辦桐花祭。", "say": "油桐花送你，花很輕，要小心別被風吹走，像下雪一樣。"}, {"id": "it27", "county": "台中市", "name": "太陽餅", "emoji": "☀️", "desc": "太陽餅是台中的代表伴手禮，酥皮薄脆，內餡是麥芽糖。", "say": "來一塊太陽餅！我家糕餅店剛烤好的，吃了才有力氣聽故事。"}, {"id": "it28", "county": "台中市", "name": "大甲芋頭酥", "emoji": "🟣", "desc": "大甲的芋頭酥以酥皮與香濃的芋泥聞名，是大甲的名產。", "say": "這個芋頭酥我親自挑的，酥皮要掉屑才是對的，你小心吃。"}, {"id": "it29", "county": "台中市", "name": "梨山高山茶", "emoji": "🍃", "desc": "梨山一帶海拔很高，生產的高山茶清香甘甜，是台灣有名的茶。", "say": "梨山的茶，要用九十度的水泡，我每次都泡太久，給你。"}, {"id": "it30", "county": "台中市", "name": "追分成功車票", "emoji": "🎫", "desc": "追分車站的「追分」到「成功」車票，因為名字吉利，成為求好運的紀念車票。", "say": "追分到成功的車票，很多考生都會買，我送你一張，希望你也成功。"}, {"id": "it31", "county": "彰化縣", "name": "彰化肉圓", "emoji": "🥟", "desc": "彰化肉圓是彰化代表性的小吃，外皮Q彈透明，裡面包著肉餡與筍丁。", "say": "彰化肉圓，Q到像果凍，我每次吃都想一口吞，給你一個。"}, {"id": "it32", "county": "彰化縣", "name": "溪湖糖廠冰棒", "emoji": "🍦", "desc": "溪湖糖廠的冰品是遠近知名的古早味，冰棒爽口不甜膩。", "say": "糖廠的冰棒，我小時候最期待夏天，這支給你，趁它還沒化。"}, {"id": "it33", "county": "彰化縣", "name": "芳苑鮮蚵", "emoji": "🦪", "desc": "芳苑一帶的海岸以養殖牡蠣聞名，是彰化最重要的蚵產地之一。", "say": "芳苑的蚵，個頭很大，我看過人拿來煎一整盤，給你吃。"}, {"id": "it34", "county": "彰化縣", "name": "田尾盆花", "emoji": "🪴", "desc": "田尾是台灣花卉與盆栽的重要產地，有「公路花園」之稱。", "say": "田尾的花，我阿嬤說花要照顧才會開，這盆你帶著，記得澆水。"}, {"id": "it35", "county": "南投縣", "name": "集集香蕉", "emoji": "🍌", "desc": "集集是南投有名的香蕉產地，香蕉皮薄、香氣濃。", "say": "集集的香蕉，在山裡吃特別甜，我習慣先看皮，再看心情，給你一根。"}, {"id": "it36", "county": "南投縣", "name": "凍頂烏龍茶", "emoji": "🍃", "desc": "鹿谷的凍頂山是台灣最有名的烏龍茶產地之一，茶葉揉成半球形。", "say": "凍頂的茶，要慢慢泡，慢慢喝，這包送你，帶著路上喝。"}, {"id": "it37", "county": "南投縣", "name": "魚池紅茶", "emoji": "☕", "desc": "魚池鄉位於日月潭附近，是台灣紅茶的重要產地，日月潭紅茶很出名。", "say": "魚池的紅茶，是我們日月潭邊的味道，你喝一口就懂了。"}, {"id": "it38", "county": "南投縣", "name": "埔里筊白筍", "emoji": "🌱", "desc": "埔里的水質清澈，是台灣有名的筊白筍產地，筊白筍口感清甜。", "say": "埔里的筊白筍，是水裡長出來的，吃起來有水的味道，給你。"}, {"id": "it39", "county": "雲林縣", "name": "西螺醬油", "emoji": "🍶", "desc": "西螺是台灣有名的醬油產地，傳統釀造的醬油風味濃郁。", "say": "西螺的醬油，我們家的菜都要它調味，你帶一瓶，味道不同。"}, {"id": "it40", "county": "雲林縣", "name": "古坑咖啡", "emoji": "☕", "desc": "古坑是台灣有名的咖啡產地，咖啡豆在山坡上生長。", "say": "古坑的咖啡，我是不太會喝，不過大家都說很香，給你。"}, {"id": "it41", "county": "雲林縣", "name": "雲林花生", "emoji": "🥜", "desc": "雲林是台灣花生的重要產地，土質適合花生生長。", "say": "雲林的花生，是我自己曬的，蒜頭口味，記得剝殼丟進垃圾桶。"}, {"id": "it42", "county": "嘉義市", "name": "火雞肉飯", "emoji": "🍚", "desc": "嘉義的雞肉飯使用火雞肉，肉質細緻，淋上肉汁與油蔥，是嘉義最有名的小吃。", "say": "嘉義的雞肉飯，一定要用火雞肉，這碗給你，吃完再走。"}, {"id": "it43", "county": "嘉義市", "name": "嘉義方塊酥", "emoji": "🍪", "desc": "方塊酥是嘉義的傳統名產，外酥內軟，帶著芝麻與麥芽糖的香氣。", "say": "方塊酥是我們嘉義人過年過節的點心，拿去，不要掉屑。"}, {"id": "it44", "county": "嘉義市", "name": "阿里山小火車模型", "emoji": "🚂", "desc": "阿里山森林鐵路的蒸汽小火車，是嘉義最有名的觀光與歷史象徵。", "say": "這是小火車的模型，汽笛會響的版本我沒有，但我保證你會想起它。"}, {"id": "it45", "county": "嘉義縣", "name": "民雄鵝肉", "emoji": "🪿", "desc": "民雄是嘉義有名的鵝肉產地，鵝肉的皮與肉分明，是民雄的名產。", "say": "民雄的鵝肉，要沾薑絲醬油，這盤給你，我們山上沒有這個。"}, {"id": "it46", "county": "嘉義縣", "name": "東石鮮蚵", "emoji": "🦪", "desc": "東石是嘉義沿海的重要養殖漁村，以蚵仔聞名。", "say": "東石的蚵仔，是我阿爸最愛的下酒菜，不過我們給你當點心。"}, {"id": "it47", "county": "嘉義縣", "name": "梅山青梅", "emoji": "🟢", "desc": "梅山一帶是嘉義有名的青梅產區，青梅可以做梅子、梅酒與蜜餞。", "say": "梅山的青梅，酸到會瞇眼，但做成蜜餞就很甜，給你。"}, {"id": "it48", "county": "嘉義縣", "name": "阿里山高山茶", "emoji": "🍃", "desc": "阿里山的高海拔與雲霧，讓這裡生產的高山茶清香甘甜。", "say": "阿里山的茶，是我們山上的禮物，慢慢泡，慢慢喝。"}, {"id": "it49", "county": "台南市", "name": "擔仔麵", "emoji": "🍜", "desc": "擔仔麵是台南有名的小吃，一小碗肉燥麵配上蝦子，是府城的傳統味道。", "say": "擔仔麵是小碗的，一碗不夠，你就多吃兩碗，府城人都這樣吃。"}, {"id": "it50", "county": "台南市", "name": "玉井芒果", "emoji": "🥭", "desc": "玉井是台南有名的芒果產地，夏天是芒果盛產的季節。", "say": "玉井的芒果，是夏天的味道，我吃過最甜的一顆，給你。"}, {"id": "it51", "county": "台南市", "name": "七股鹽", "emoji": "🧂", "desc": "七股是台灣曾經的重要鹽場，如今的鹽山是熱門觀光景點。", "say": "七股的鹽，是海水曬出來的，很純，你帶著，吃什麼都加一點。"}, {"id": "it52", "county": "台南市", "name": "白河蓮子", "emoji": "🪷", "desc": "白河是台南著名的蓮花與蓮子產地，每年夏天蓮花盛開。", "say": "白河的蓮子，我放了一整個夏天才捨得拿出來，給你。"}, {"id": "it53", "county": "高雄市", "name": "旗津烤魷魚", "emoji": "🦑", "desc": "旗津是高雄有名的海鮮與老街，烤魷魚是遊客最愛的小吃之一。", "say": "旗津的烤魷魚，要自己啃才過癮，這串給你，辣粉自己加。"}, {"id": "it54", "county": "高雄市", "name": "大寮紅豆", "emoji": "🫘", "desc": "大寮是高雄有名的紅豆產地，紅豆可以做成湯、餅與甜點。", "say": "大寮的紅豆，煮湯最好，你帶一包，回家慢慢煮。"}, {"id": "it55", "county": "高雄市", "name": "岡山羊肉爐", "emoji": "🍲", "desc": "岡山是高雄有名的羊肉產地，羊肉爐在冬天最受歡迎。", "say": "岡山的羊肉爐，是我冬天最愛的暖身菜，這鍋給你。"}, {"id": "it56", "county": "高雄市", "name": "旗山香蕉", "emoji": "🍌", "desc": "旗山是高雄有名的香蕉產地，過去外銷日本，有「香蕉王國」的美名。", "say": "旗山的香蕉，曾經賣到日本去，你吃吃看就知道為什麼。"}, {"id": "it57", "county": "高雄市", "name": "美濃油紙傘", "emoji": "☂️", "desc": "美濃是客家小鎮，油紙傘是這裡有名的傳統工藝，也是婚嫁與喜慶的吉祥物。", "say": "美濃的油紙傘，晴天遮陽，雨天遮雨，也能當祝福，送你。"}, {"id": "it58", "county": "屏東縣", "name": "東港黑鮪魚", "emoji": "🐟", "desc": "東港是台灣黑鮪魚的重要漁港，每年春天有黑鮪魚季。", "say": "東港的黑鮪魚，是我們屏東人的驕傲，這片給你，慢慢嘗。"}, {"id": "it59", "county": "屏東縣", "name": "萬巒豬腳", "emoji": "🍖", "desc": "萬巒是客家庄，豬腳是這裡最有名的美食，吃的時候沾蒜泥醬油。", "say": "萬巒的豬腳，是客家人過年的菜，給你，慢慢啃。"}, {"id": "it60", "county": "屏東縣", "name": "黑珍珠蓮霧", "emoji": "🍎", "desc": "屏東的林邊、佳冬一帶是蓮霧的重要產地，黑珍珠蓮霧顏色深、口感清甜。", "say": "黑珍珠蓮霧，我每次吃都要先洗，因為太愛了，給你一顆。"}, {"id": "it61", "county": "屏東縣", "name": "琉球海龜玩偶", "emoji": "🐢", "desc": "小琉球是台灣少數可以在近岸看到海龜的地方，海龜是島上的明星。", "say": "小琉球的海龜，我沒親眼見過，但這隻玩偶先給你，記得保護海龜。"}, {"id": "it62", "county": "宜蘭縣", "name": "鴨賞", "emoji": "🦆", "desc": "鴨賞是宜蘭有名的特產，用鴨肉煙燻製成，是宜蘭的伴手禮。", "say": "宜蘭的鴨賞，煙燻味很香，我一次可以吃好幾片，給你。"}, {"id": "it63", "county": "宜蘭縣", "name": "金棗糕", "emoji": "🍬", "desc": "宜蘭是台灣金棗的重要產地之一，金棗可以做成金棗糕與蜜餞。", "say": "金棗糕，酸酸甜甜，Q彈，我每次吃都想起雨天的宜蘭。"}, {"id": "it64", "county": "宜蘭縣", "name": "三星蔥油餅", "emoji": "🥞", "desc": "三星是宜蘭的蔥產地，三星蔥以口感清脆與香氣聞名，蔥油餅是最受歡迎的料理。", "say": "三星的蔥油餅，要趁熱吃，蔥的香氣會在雨天特別明顯，給你。"}, {"id": "it65", "county": "宜蘭縣", "name": "南方澳鯖魚", "emoji": "🐟", "desc": "南方澳是台灣三大漁港之一，鯖魚是這裡最有名的漁獲。", "say": "南方澳的鯖魚，是漁夫們最驕傲的收穫，你帶著，也算是帶走一片海。"}, {"id": "it66", "county": "花蓮縣", "name": "花蓮麻糬", "emoji": "🍡", "desc": "麻糬是花蓮有名的伴手禮，軟糯、不黏牙，有許多不同口味。", "say": "花蓮的麻糬，是我們縱谷的甜點，一口一個，吃完再唱歌！"}, {"id": "it67", "county": "花蓮縣", "name": "瑞穗鮮乳", "emoji": "🥛", "desc": "瑞穗是花蓮有名的牧場，鮮乳香濃，是遊客喜歡的特產。", "say": "瑞穗的鮮乳，我小時候每天喝，喝了會長高，你也喝一瓶！"}, {"id": "it68", "county": "花蓮縣", "name": "花蓮大理石", "emoji": "🪨", "desc": "花蓮蘊藏豐富的大理石，太魯閣一帶的峽谷與清水斷崖都與大理石岩層有關。", "say": "大理石是花蓮的寶藏，太魯閣的山壁都是它，這塊給你。"}, {"id": "it69", "county": "台東縣", "name": "池上便當", "emoji": "🍱", "desc": "池上米以香Q聞名，池上便當是遊客在池上的必吃美食，使用在地米飯。", "say": "池上便當，米飯要慢慢嚼，吃著吃著就有一種安靜的甜，給你。"}, {"id": "it70", "county": "台東縣", "name": "台東釋迦", "emoji": "🍈", "desc": "台東是台灣釋迦的最大產地，釋迦甜度高、口感綿密。", "say": "台東的釋迦，要軟了才能吃，我都會放著等，你也等一下。"}, {"id": "it71", "county": "台東縣", "name": "蘭嶼拼板舟", "emoji": "⛵", "desc": "蘭嶼的達悟族人以拼板舟捕飛魚，是島上最重要的傳統文化象徵。", "say": "這是蘭嶼的拼板舟模型，真正的很大，要很多人一起划，這個你拿著就好。"}, {"id": "it72", "county": "台東縣", "name": "初鹿鮮乳", "emoji": "🥛", "desc": "初鹿是台東有名的牧場，牧場的鮮乳新鮮香濃。", "say": "初鹿的鮮乳，是早上現擠的，要先喝，再去玩，給你。"}, {"id": "it73", "county": "澎湖縣", "name": "澎湖仙人掌冰", "emoji": "🌵", "desc": "澎湖的風大、土地貧瘠，仙人掌卻長得很好，仙人掌冰是澎湖的特色冰品。", "say": "澎湖的仙人掌冰，吃起來是涼的，也是紫的，你試試！"}, {"id": "it74", "county": "澎湖縣", "name": "澎湖黑糖糕", "emoji": "🟤", "desc": "黑糖糕是澎湖有名的點心，以黑糖與麵糊蒸成，口感綿密。", "say": "澎湖的黑糖糕，是甜的，風大的日子吃特別暖，給你！"}, {"id": "it75", "county": "澎湖縣", "name": "玄武岩小石", "emoji": "🪨", "desc": "澎湖是由火山噴發形成的島群，玄武岩柱是島上最特別的地形景觀。", "say": "這是玄武岩，澎湖的石頭都是火山做的，你拿著，也算是帶著海風。"}, {"id": "it76", "county": "金門縣", "name": "金門貢糖", "emoji": "🍬", "desc": "貢糖是金門有名的伴手禮，以花生與麥芽糖製成，口感酥鬆香甜。", "say": "金門的貢糖，是我們過年的點心，你要慢慢吃，會有花生香。"}, {"id": "it77", "county": "金門縣", "name": "風獅爺", "emoji": "🦁", "desc": "風獅爺是金門的守護神，早期居民用它來鎮風、鎮煞，是金門的象徵。", "say": "風獅爺會保佑你，我這尊給你，它不會說話，但很可靠。"}, {"id": "it78", "county": "金門縣", "name": "金門麵線", "emoji": "🍜", "desc": "金門的麵線以手工拉製與日曬聞名，口感細緻、麵線不易爛。", "say": "金門的麵線，是用太陽曬出來的，煮起來細細的，給你。"}, {"id": "it79", "county": "連江縣", "name": "繼光餅", "emoji": "🥯", "desc": "繼光餅是馬祖與福州一帶的傳統麵食，相傳與抗倭名將戚繼光有關。", "say": "這是繼光餅，中間有洞，可以串起來，馬祖人會夾肉吃。"}, {"id": "it80", "county": "連江縣", "name": "馬祖魚麵", "emoji": "🍜", "desc": "魚麵是馬祖的特產，用魚漿與麵粉製成，口感Q彈。", "say": "馬祖的魚麵，是我們每天早餐的味道，煮出來帶著海味，給你。"}, {"id": "it81", "county": "連江縣", "name": "藍眼淚小瓶", "emoji": "🔵", "desc": "藍眼淚是海中浮游生物（夜光藻）發光形成的藍色光芒，是馬祖著名的自然景觀。", "say": "藍眼淚小瓶是我自己的紀念，海水的光很安靜，送給你，也記得安靜地看。"}];
+const ITEM_REWARDS = {"main-基隆市-1": ["it01"], "main-基隆市-2": ["it02"], "main-台北市-1": ["it04"], "main-台北市-3": ["it05"], "road-台北市-1": ["it06"], "side-台北市-2": ["it07"], "main-新北市-3": ["it08"], "main-新北市-8": ["it09"], "main-新北市-2": ["it10"], "main-新北市-9": ["it11"], "road-桃園市-1": ["it12"], "main-桃園市-2": ["it13"], "side-桃園市-2": ["it14"], "side-桃園市-3": ["it15"], "main-新竹市-1": ["it16"], "side-新竹市-2": ["it17"], "road-新竹市-1": ["it18"], "main-新竹縣-1": ["it19"], "main-新竹縣-2": ["it20"], "side-新竹縣-1": ["it21"], "side-新竹縣-3": ["it22"], "main-苗栗縣-1": ["it23"], "side-苗栗縣-1": ["it24"], "road-苗栗縣-1": ["it25"], "side-苗栗縣-2": ["it26"], "main-台中市-1": ["it27"], "main-台中市-7": ["it28"], "side-台中市-1": ["it29"], "main-彰化縣-1": ["it31"], "main-彰化縣-3": ["it32"], "side-彰化縣-2": ["it33"], "road-彰化縣-1": ["it34"], "main-南投縣-1": ["it35"], "main-南投縣-2": ["it36"], "side-南投縣-1": ["it37"], "side-南投縣-3": ["it38"], "main-雲林縣-1": ["it39"], "main-雲林縣-2": ["it40"], "main-雲林縣-3": ["it41"], "main-嘉義市-1": ["it42"], "side-嘉義市-2": ["it44"], "main-嘉義縣-2": ["it45"], "main-嘉義縣-3": ["it46"], "side-嘉義縣-1": ["it47"], "side-嘉義縣-2": ["it48"], "main-台南市-1": ["it49"], "main-台南市-3": ["it50"], "main-台南市-5": ["it51"], "main-台南市-7": ["it52"], "main-高雄市-3": ["it53"], "main-高雄市-4": ["it54"], "main-高雄市-5": ["it55"], "main-高雄市-8": ["it56"], "road-高雄市-1": ["it57"], "main-屏東縣-1": ["it58"], "main-屏東縣-3": ["it59"], "main-屏東縣-5": ["it60"], "main-屏東縣-6": ["it61"], "main-宜蘭縣-1": ["it62"], "main-宜蘭縣-2": ["it63"], "side-宜蘭縣-1": ["it64"], "side-宜蘭縣-2": ["it65"], "main-花蓮縣-1": ["it66"], "main-花蓮縣-2": ["it67"], "side-花蓮縣-3": ["it68"], "main-台東縣-1": ["it69"], "main-台東縣-2": ["it70"], "side-台東縣-2": ["it72"], "main-澎湖縣-1": ["it73"], "side-澎湖縣-1": ["it74"], "main-金門縣-1": ["it76"], "side-金門縣-1": ["it77"], "side-金門縣-2": ["it78"], "main-連江縣-1": ["it79"], "side-連江縣-1": ["it80"], "side-連江縣-2": ["it81"]};
+const REGION_ITEM = {"north": "it03", "central": "it30", "south": "it43", "east": "it71", "island": "it75"};   // 每區主線通關可得的道具
+const ITEM_GATES = {"main-基隆市-2": ["it01"], "main-台北市-2": ["it04"], "main-台北市-4": ["it05"], "main-台北市-5": ["it04"], "main-新北市-3": ["it10"], "main-新北市-8": ["it08"], "main-新北市-9": ["it09"], "main-桃園市-3": ["it13"], "main-桃園市-4": ["it13"], "main-新竹市-2": ["it16"], "main-新竹縣-2": ["it19"], "main-苗栗縣-2": ["it23"], "main-苗栗縣-3": ["it23"], "main-台中市-4": ["it27"], "main-台中市-7": ["it27"], "main-彰化縣-2": ["it31"], "main-彰化縣-4": ["it32"], "main-彰化縣-5": ["it32"], "main-南投縣-2": ["it35"], "main-雲林縣-2": ["it39"], "main-雲林縣-3": ["it40"], "main-嘉義縣-3": ["it45"], "main-台南市-2": ["it49"], "main-台南市-3": ["it49"], "main-台南市-4": ["it50"], "main-台南市-6": ["it51"], "main-台南市-7": ["it51"], "main-台南市-8": ["it52"], "main-高雄市-4": ["it53"], "main-高雄市-5": ["it54"], "main-高雄市-6": ["it55"], "main-高雄市-8": ["it55"], "main-高雄市-9": ["it56"], "main-高雄市-10": ["it56"], "main-屏東縣-2": ["it58"], "main-屏東縣-3": ["it58"], "main-屏東縣-4": ["it59"], "main-屏東縣-6": ["it60"], "main-屏東縣-7": ["it61"], "main-宜蘭縣-2": ["it62"], "main-花蓮縣-2": ["it66"], "main-花蓮縣-3": ["it67"], "main-台東縣-2": ["it69"], "main-台東縣-3": ["it70"], "main-澎湖縣-2": ["it73"], "main-金門縣-2": ["it76"]};
+const DELIVERY_CAND = {"north": [["shiaolan", "kerou"], ["shiaolan", "jiaen"], ["hanlin", "lali"]], "east": [["lali", "hanlin"], ["kerou", "shiaolan"]], "island": [["jiaen", "shiaolan"], ["jianlin", "poyu"]], "central": [["sihyu", "wanjhen"], ["poyu", "jianlin"]], "south": [["wanjhen", "sihyu"]]};
+const DELIVERY_SCRIPTS = {"shiaolan>kerou": {"give": "……這張明信片，是我在正濱漁港畫的。麻煩你交給花蓮的潘可柔。她說她唱得更好聽了——我想讓她知道，我畫得也更好了。", "scene": [["n", "你在花蓮的街角找到了潘可柔，她正對著鄰居們練習新學的族語歌。"], ["kerou", "咦？有人在找我？——啊，是從北邊來的旅人！"], ["me", "蘇曉嵐託我把這個交給妳。（遞出彩色屋明信片）"], ["kerou", "（睜大眼睛）哇……基隆的彩色房子！她畫得好細，連屋簷上的雨滴都有！"], ["kerou", "那個比賽時一句話都不肯多說的蘇曉嵐，原來都用畫在跟我說話。"], ["me", "她說，她畫得也更好了。"], ["kerou", "（大笑）好！那我也不能輸！回去幫我說：下次比賽，我的歌聲會更亮！"]], "closing": [["kerou", "（清了清喉嚨，哼起一小段歌）這是我阿嬤教的，花蓮的路名，全都藏在歌裡。"], ["kerou", "你要是在查地名，就沿著歌走一遍吧，走完你就知道這些路為什麼叫這個名字了。"], ["n", "可柔把家鄉路名背後的故事，一句一句唱給你聽。"]]}, "shiaolan>jiaen": {"give": "……這張明信片，請你交給澎湖的許嘉恩。縣賽作文，我們都寫得很好。這次……我想用畫，跟她打招呼。", "scene": [["n", "退潮後的澎湖，許嘉恩正蹲在礁石邊整理剪報，看見你走近，才慢慢站起來。"], ["jiaen", "……你是從北邊來的？看你手上拿的東西，我大概猜到了。"], ["me", "蘇曉嵐託我交給妳。（遞出彩色屋明信片）"], ["jiaen", "……（沉默了一會）畫得很安靜。筆觸很慢，就像她寫作文的樣子。"], ["jiaen", "縣賽作文，我輸給她兩次，贏她三次。我每一次都記得。"], ["jiaen", "回去告訴她：下次作文見。……還有，這張，我要收進剪報本。"]], "closing": [["jiaen", "澎湖的路都被風吹出了脾氣。你想聽的話，我可以告訴你它們的名字是怎麼來的。"], ["n", "嘉恩慢慢地，把離島路名的故事一件一件說給你聽。"]]}, "hanlin>lali": {"give": "（大聲）幫我把這張基隆的彩色屋明信片交給拉利．馬耀！告訴他，縣運一千五百公尺，我今年一定贏！這張是我挑的，最帥！", "scene": [["n", "花蓮的溪邊，拉利正安靜地調整鞋帶，聽見腳步聲，抬頭看了你一眼。"], ["lali", "……你找我？"], ["me", "林承翰託我帶東西給你。（遞出彩色屋明信片）"], ["lali", "……（接過來，看了很久）基隆的房子。顏色很多。"], ["lali", "……他說他會贏。"], ["me", "他說，這張是他挑的，最帥。"], ["lali", "……（嘴角微微揚起）告訴他，明年縣運見。我不會讓。"]], "closing": [["lali", "……你要查路名的話，跟我來。花蓮的路，我閉著眼睛都認得。"], ["n", "拉利帶你走了一段花蓮的路，把每一條路名的由來，都慢慢告訴了你。"]]}, "lali>hanlin": {"give": "……這個，給林承翰。蘭嶼的拼板舟，要很多人一起划才會到。……縣運，我也不會讓。", "scene": [["n", "基隆港邊，林承翰一看到你，就隔著半條街大聲揮手。"], ["hanlin", "欸！是你！你從花蓮那邊來的對不對！有沒有看到拉利！"], ["me", "他託我帶東西給你。（遞出蘭嶼拼板舟）"], ["hanlin", "（愣住）……船？拼板舟？他送我一艘船！"], ["hanlin", "（大笑）哈哈哈，拉利那傢伙！這是在叫我「別輸給風」對不對！"], ["me", "他說，縣運，他不會讓。"], ["hanlin", "我也不會！回去告訴他，我今年每天加練！"]], "closing": [["hanlin", "（把小船小心收好）對了，你不是在查地名嗎？基隆的路名我最熟，走，我帶你去！"], ["n", "承翰一路大喊，把基隆的路名故事一個個講給你聽。"]]}, "kerou>shiaolan": {"give": "這艘船，請你交給基隆的蘇曉嵐！蘭嶼的拼板舟，聽說能把歌聲帶過海，我想把我唱的歌，也帶給她！", "scene": [["n", "基隆的雨剛停，蘇曉嵐坐在港邊的長椅上，攤開速寫本。"], ["shiaolan", "……（抬頭，小聲）有人……找我？"], ["me", "潘可柔託我帶來的。（遞出蘭嶼拼板舟）"], ["shiaolan", "……可柔……？（接過小船，輕輕轉了一圈）……拼板舟。她說過，能把歌聲帶過海的船。"], ["shiaolan", "……比賽的時候，她一唱歌，我就沒辦法畫了。"], ["shiaolan", "……幫我回她：我會畫一張，換她的歌。"]], "closing": [["shiaolan", "……你想聽基隆路名的由來嗎？……我的筆記本裡，有。"], ["n", "曉嵐翻開速寫本，把基隆的路名故事，一頁一頁念給你聽。"]]}, "jiaen>shiaolan": {"give": "這顆玄武岩，請交給基隆的蘇曉嵐。澎湖的石頭，是被海風磨出來的。縣賽作文，下次見。", "scene": [["n", "蘇曉嵐在港邊的紅磚牆旁，正低頭畫著什麼，一看到你，立刻把本子闔起來。"], ["shiaolan", "……你好。"], ["me", "許嘉恩託我交給妳的。（遞出玄武岩小石）"], ["shiaolan", "……（雙手接過，摸了摸小石）好重。表面……有很多小洞。"], ["shiaolan", "……嘉恩說，海風把石頭磨成這樣。……我覺得，這是在說她的作文。"], ["shiaolan", "……幫我回：下次作文見。我不會輸。"]], "closing": [["shiaolan", "……你想聽基隆路名的故事嗎？我筆記本裡有，來。"], ["n", "曉嵐小小聲地，把基隆路名背後的故事說給你聽。"]]}, "jianlin>poyu": {"give": "（賊笑）幫我把這顆石頭丟給台中的陳柏宇！告訴他：線上等著，別想跑！澎湖的石頭，砸過去才夠力！", "scene": [["n", "台中的街角，陳柏宇一手滑著手機，一手拿著鋼彈模型，眼皮抬都沒抬。"], ["poyu", "……有事？"], ["me", "洪建霖託我交給你。（遞出玄武岩小石）"], ["poyu", "……石頭？他寄石頭給我？這是新型態的嘴砲嗎。"], ["poyu", "（翻過來看）有洞，還挺重。……不錯，拿來壓模型說明書剛好。"], ["poyu", "回去告訴他：線上見，我今天的攻略又更新了。"]], "closing": [["poyu", "……還有，你要是在查地名的話，台中的我倒是懂一點。別誤會，我只是不想你被別人亂講。"], ["n", "柏宇一邊吐槽，一邊把台中路名的故事說給你聽。"]]}, "sihyu>wanjhen": {"give": "這張『成功』車票，請交給台南的葉宛真！才藝比賽，這次我要用舞蹈贏過她的米糕！記得告訴她，成功的意思，就是我會成功！", "scene": [["n", "台南的廟埕邊，葉宛真剛蒸好一籠米糕，熱氣在陽光裡升起。"], ["wanjhen", "哎呀，旅人來得正好，要不要先吃一塊？"], ["me", "黃思妤託我把這個交給妳。（遞出追分成功車票）"], ["wanjhen", "（接過車票，笑瞇了眼）追分到成功……她是在跟我說，這次比賽她會成功？"], ["wanjhen", "思妤真的很有精神。社辦那件事……我也沒輸給她喔。"], ["wanjhen", "你回去時，幫我帶一份米糕給她好不好？才藝比賽那天，我們舞台上見。"]], "closing": [["wanjhen", "你是來查路名的對吧？子謙說這一帶他查過很多次，我邊走邊說給你聽。"], ["n", "宛真一路笑咪咪地，把台南的路名故事慢慢說給你聽。"]]}, "poyu>jianlin": {"give": "這張車票，丟給澎湖那個洪建霖。『追分』『成功』，意思是祝他成功——前提是他別在線上被我爆掉。", "scene": [["n", "澎湖的海風大得能把話吹走，洪建霖正蹲在礁石上抓螃蟹。"], ["jianlin", "（回頭，眼睛發亮）欸欸欸！有人來了！你是不是從本島來的！"], ["me", "陳柏宇託我交給你。（遞出追分成功車票）"], ["jianlin", "（跳起來）陳柏宇！那個本島仔！他終於肯理我了！"], ["jianlin", "追分、成功……他是在酸我還是祝福我？這車票怎麼看都是兩個都有！"], ["jianlin", "回去幫我說：線上等著，我今天就連升三級！"]], "closing": [["jianlin", "對了，你是不是在查地名？澎湖的路我最熟，我帶你去！不過，先別告訴嘉恩我又跑出來玩……"], ["n", "建霖一邊東張西望，一邊把離島路名的故事講給你聽。"]]}, "wanjhen>sihyu": {"give": "這盒方塊酥，請帶給台中的黃思妤。才藝比賽之前，先吃點甜的，才有力氣跳舞，對吧？", "scene": [["n", "台中的街頭，黃思妤正對著手機鏡頭跳舞，周圍圍了一圈拍手的人。"], ["sihyu", "（收舞，喘氣）哇！有觀眾！——咦？你手上拿的是什麼？"], ["me", "葉宛真託我交給妳。（遞出嘉義方塊酥）"], ["sihyu", "方塊酥！！宛真的點心耶！她是在收買我嗎？"], ["sihyu", "（咬一口）……好吃。可惡，這樣我怎麼忍心跟她吵社辦。"], ["sihyu", "回去告訴她：才藝比賽，我不會手下留情！……但是點心要再寄一盒。"]], "closing": [["sihyu", "對了，你有在查地名嗎？台中的我們可熟了，我邊跳邊講給你聽！"], ["n", "思妤邊跳邊說，把台中路名的故事熱熱鬧鬧地講給你聽。"]]}};
+const ITEM_BY_ID = {}, ITEM_INDEX = {}, ITEM_SOURCE = {}, REGION_ITEM_OF = {};
+ITEM_DEFS.forEach(function(d, i){ ITEM_BY_ID[d.id] = d; ITEM_INDEX[d.id] = i; });
+Object.keys(ITEM_REWARDS).forEach(function(cid){ ITEM_REWARDS[cid].forEach(function(iid){ ITEM_SOURCE[iid] = cid; }); });
+Object.keys(REGION_ITEM).forEach(function(rid){ REGION_ITEM_OF[REGION_ITEM[rid]] = rid; });
+let itemSheetUrl = null;
+let _chainIdx = null;
+function chainIndex(){
+  if (_chainIdx) return _chainIdx;
+  _chainIdx = {};
+  Object.keys(COUNTY_CONTENT).forEach(function(cn){
+    const cc = COUNTY_CONTENT[cn];
+    [["mainChains","main"],["sideQuests","side"]].forEach(function(pair){
+      (cc[pair[0]] || []).forEach(function(ch, idx){ _chainIdx[ch.id] = {county:cn, chain:ch, kind:pair[1], idx:idx}; });
+    });
+  });
+  return _chainIdx;
+}
+function chainShortTitle(ch){ const t = String(ch.title || ""); const k = t.indexOf("．"); return k >= 0 ? t.slice(k + 1) : t; }
+function ownsItem(id){ return !!(state.items && state.items[id]); }
+function isChainComplete(ch){ return ch.placeIds.every(function(id){ return state.discovered[id]; }); }
+function regionTitleOf(rid){ const r = REGIONS.find(function(x){ return x.id === rid; }); return r ? r.title : rid; }
+function regionNameOf(rid){ const r = REGIONS.find(function(x){ return x.id === rid; }); return r ? r.name : rid; }
+
+// ---------- 託付（主角群帶東西給另一位主角群）----------
+let _planCache = {key:null, plan:{}};
+// 回傳 {giverRegion: {giverRegion, giver, receiver, receiverRegion, county, item, key}}
+// 規則：玩家依旅程順序離開某區時，該區的主角群會託你把「該區道具」帶給「之後才會到達的區域」裡、與他有關係的另一位主角群
+function deliveryPlan(){
+  const ck = state.charKey, key = ck + "|" + state.homeRegion;
+  if (_planCache.key === key) return _planCache.plan;
+  const plan = {};
+  if (ck){
+    const order = regionOrder();
+    order.forEach(function(gr, gi){
+      const cands = DELIVERY_CAND[gr] || [];
+      for (let i = 0; i < cands.length; i++){
+        const g = cands[i][0], t = cands[i][1];
+        if (g === ck || t === ck) continue;
+        const tr = CHAR_BY_KEY[t].region;
+        if (order.indexOf(tr) > gi){
+          plan[gr] = {giverRegion:gr, giver:g, receiver:t, receiverRegion:tr, county:PROTAGONIST_HOME_COUNTY[t], item:REGION_ITEM[gr], key:g + ">" + t};
+          break;
+        }
+      }
+    });
+  }
+  _planCache = {key:key, plan:plan};
+  return plan;
+}
+function incomingDeliveries(rid){ const p = deliveryPlan(); return Object.keys(p).map(function(k){ return p[k]; }).filter(function(d){ return d.receiverRegion === rid; }); }
+// 路名任務鏈：有託付送達該區 → 交付完成後開啟；沒有託付送達 → 該區主線通關後開啟
+function roadsUnlocked(rid){
+  const inc = incomingDeliveries(rid);
+  if (inc.length) return inc.some(function(d){ return state.delivered && state.delivered[d.giverRegion]; });
+  return !!state.regionDone[rid];
+}
+
+// ---------- 任務鏈的鎖定條件 ----------
+function chainLocks(chain){
+  const info = chainIndex()[chain.id]; if (!info) return [];
+  const rid = regionOf[info.county], locks = [];
+  if (info.kind === "main"){
+    (ITEM_GATES[chain.id] || []).forEach(function(id){ if (!ownsItem(id)) locks.push({type:"item", id:id}); });
+  } else if (chain.id.indexOf("road-") === 0){
+    if (!roadsUnlocked(rid)) locks.push({type:"road", region:rid});
+  } else {
+    if (!ownsItem(REGION_ITEM[rid])) locks.push({type:"item", id:REGION_ITEM[rid]});
+  }
+  return locks;
+}
+function chainIsLocked(ch){ return chainLocks(ch).length > 0 && !isChainComplete(ch); }
+function lockShortText(lock){
+  if (lock.type === "item") return ITEM_BY_ID[lock.id].name;
+  const inc = incomingDeliveries(lock.region);
+  return inc.length ? "託付任務：把「" + ITEM_BY_ID[inc[0].item].name + "」交給" + CHAR_BY_KEY[inc[0].receiver].name : "完成「" + regionNameOf(lock.region) + "」主線";
+}
+function lockRowHtml(lock){
+  if (lock.type === "item"){
+    const d = ITEM_BY_ID[lock.id];
+    return '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + itemIconHtml(d, 48) +
+      '<div><div style="font-weight:700;color:var(--gold-lt);">' + escapeHtml(d.name) + '</div><div style="font-size:.76rem;color:var(--mist);">' + itemWhereHtml(lock.id) + '</div></div></div>';
+  }
+  const inc = incomingDeliveries(lock.region);
+  if (inc.length){
+    const d = inc[0], it = ITEM_BY_ID[d.item];
+    const have = ownsItem(d.item);
+    return '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + (have ? itemIconHtml(it, 48) : '<div class="item-ico empty" style="width:48px;height:48px;font-size:1.4rem;">？</div>') +
+      '<div><div style="font-weight:700;color:var(--gold-lt);">📦 託付任務</div><div style="font-size:.76rem;color:var(--mist);">' +
+      (have ? '把「' + escapeHtml(it.name) + '」交給 ' + escapeHtml(CHAR_BY_KEY[d.receiver].name) + '（' + escapeHtml(d.county) + '）。走進那個縣市，對話就會自動開始。'
+            : '先完成「' + escapeHtml(regionTitleOf(d.giverRegion)) + '」主線取得「' + escapeHtml(it.name) + '」，再帶給 ' + escapeHtml(CHAR_BY_KEY[d.receiver].name) + '（' + escapeHtml(d.county) + '）。') +
+      '</div></div></div>';
+  }
+  return '<div style="margin:8px 0;">需要先完成「' + escapeHtml(regionTitleOf(lock.region)) + '」主線劇情。</div>';
+}
+
+function itemIconHtml(d, size){
+  if (itemSheetUrl){
+    const cols = ITEM_SHEET.cols, rows = ITEM_SHEET.rows, idx = ITEM_INDEX[d.id];
+    const c = idx % cols, r = Math.floor(idx / cols);
+    const px = cols > 1 ? c / (cols - 1) * 100 : 0, py = rows > 1 ? r / (rows - 1) * 100 : 0;
+    return '<div class="item-ico" style="width:' + size + 'px;height:' + size + 'px;background-image:url(' + itemSheetUrl + ');background-size:' + (cols * 100) + '% ' + (rows * 100) + '%;background-position:' + px.toFixed(3) + '% ' + py.toFixed(3) + '%;"></div>';
+  }
+  return '<div class="item-ico" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.6) + 'px;">' + d.emoji + '</div>';
+}
+function loadItemSheet(){
+  const files = ITEM_SHEET.files.slice();
+  (function next(){
+    const f = files.shift(); if (!f) return;
+    const img = new Image();
+    img.onload = function(){
+      itemSheetUrl = f + "?v=" + APP_VERSION;
+      if (curScreenId === "inventory") renderInventoryScreen();
+      else if (curScreenId === "county" && currentCounty) renderCountyItems(currentCounty);
+    };
+    img.onerror = next;
+    img.src = f + "?v=" + APP_VERSION;
+  })();
+}
+loadItemSheet();
+
+// 補發：縣市任務鏈已完成但尚未持有的道具、區域主線已通關但尚未持有的區域道具。popup=true 時加入「獲得道具」彈窗佇列。
+function grantItems(popup){
+  if (!state.items) state.items = {};
+  if (!state.delivered) state.delivered = {};
+  const got = [];
+  const idx = chainIndex();
+  Object.keys(ITEM_REWARDS).forEach(function(cid){
+    const info = idx[cid]; if (!info || !isChainComplete(info.chain)) return;
+    ITEM_REWARDS[cid].forEach(function(iid){ if (!state.items[iid]){ state.items[iid] = true; got.push({type:"item", key:iid}); } });
+  });
+  Object.keys(REGION_ITEM).forEach(function(rid){
+    if (state.regionDone[rid] && !state.items[REGION_ITEM[rid]]){ state.items[REGION_ITEM[rid]] = true; got.push({type:"regionitem", key:rid}); }
+  });
+  if (got.length){
+    if (popup) got.forEach(queueUnlock);
+    else toast("🎒 已補發 " + got.length + " 件道具，可到「物品」查看");
+  }
+  return got;
+}
+// 主線通關：獲得該區道具（開啟支線任務），並接下託付
+function grantRegionItem(rid){
+  if (!state.items) state.items = {};
+  const iid = REGION_ITEM[rid]; if (!iid || state.items[iid]) return;
+  state.items[iid] = true;
+  queueUnlock({type:"regionitem", key:rid});
+}
+
+function itemWhereHtml(id){
+  const rid = REGION_ITEM_OF[id];
+  if (rid) return "完成「" + escapeHtml(regionTitleOf(rid)) + "」主線劇情即可獲得";
+  const cid = ITEM_SOURCE[id], info = cid ? chainIndex()[cid] : null;
+  if (!info) return "";
+  return "完成「" + escapeHtml(info.county + "．" + chainShortTitle(info.chain)) + "」即可獲得";
+}
+function itemOpens(id){   // 這件道具能開啟的任務鏈
+  const idx = chainIndex(), out = [], rid = REGION_ITEM_OF[id];
+  if (rid){
+    Object.keys(idx).forEach(function(cid){
+      const o = idx[cid];
+      if (regionOf[o.county] === rid && cid.indexOf("side-") === 0) out.push(o);
+    });
+  } else {
+    Object.keys(ITEM_GATES).forEach(function(cid){ if (ITEM_GATES[cid].indexOf(id) >= 0 && idx[cid]) out.push(idx[cid]); });
+  }
+  return out;
+}
+function itemDeliveryHtml(id){
+  const rid = REGION_ITEM_OF[id]; if (!rid) return "";
+  const d = deliveryPlan()[rid]; if (!d) return "";
+  const r = CHAR_BY_KEY[d.receiver];
+  return state.delivered && state.delivered[rid]
+    ? '✅ 已交給 ' + escapeHtml(r.name) + '（' + escapeHtml(d.county) + '）'
+    : '📦 託付中：請把它交給 ' + escapeHtml(r.name) + '（' + escapeHtml(d.county) + '）。走進那個縣市，對話會自動開始。';
+}
+function openItemModal(id){
+  const d = ITEM_BY_ID[id]; if (!d) return;
+  if (!ownsItem(id)){
+    openModal('<div style="text-align:center;margin-bottom:8px;"><div class="item-ico empty" style="width:84px;height:84px;font-size:2.4rem;margin:0 auto;">？</div></div>'+
+      '<div class="detail-title" style="text-align:center;">尚未取得的道具</div>'+
+      '<div class="detail-old" style="text-align:center;">' + escapeHtml(d.county) + '</div>'+
+      '<div class="detail-body">' + itemWhereHtml(id) + '。</div>', {center:true});
+    return;
+  }
+  const opens = itemOpens(id).map(function(o){
+    const locked = chainLocks(o.chain).length > 0;
+    return '<div style="margin:3px 0;">' + (locked ? "🔒 " : "✅ ") + escapeHtml(o.county + "．" + chainShortTitle(o.chain)) +
+      '（' + (o.kind === "main" ? "主線任務鏈" : "支線任務") + '）</div>';
+  }).join("");
+  const del = itemDeliveryHtml(id);
+  openModal('<div style="text-align:center;margin-bottom:8px;">' + itemIconHtml(d, 96) + '</div>'+
+    '<div class="detail-title" style="text-align:center;">' + escapeHtml(d.name) + '</div>'+
+    '<div class="detail-old" style="text-align:center;">' + escapeHtml(d.county) + '・在地道具</div>'+
+    '<div class="detail-body">' + escapeHtml(d.desc) + '</div>'+
+    (del ? '<div class="detail-body" style="margin-top:8px;"><b>' + del + '</b></div>' : '')+
+    (opens ? '<div class="detail-body" style="margin-top:8px;"><b>🔑 可開啟的任務</b>' + opens + '</div>' : '<div class="detail-body" style="margin-top:8px;color:var(--mist);">這件道具是紀念品，目前沒有需要它的任務。</div>'), {center:true});
+}
+function showChainLockModal(chain){
+  const rows = chainLocks(chain).map(lockRowHtml).join("");
+  openModal('<div class="detail-title">🔒 任務尚未開啟</div><div class="detail-body">「' + escapeHtml(chain.title) + '」還需要：' + rows + '</div>', {center:true});
+}
+function itemSlotEl(d, size){
+  const own = ownsItem(d.id);
+  const el = document.createElement("div");
+  el.className = "item-slot" + (own ? "" : " locked");
+  el.innerHTML = (own ? itemIconHtml(d, size) : '<div class="item-ico empty" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.5) + 'px;">？</div>') +
+    '<div class="nm">' + (own ? escapeHtml(d.name) : "？？？") + '</div>';
+  el.addEventListener("click", function(){ sfx("click"); openItemModal(d.id); });
+  return el;
+}
+function renderCountyItems(cname){
+  const box = document.getElementById("county-items-section"); if (!box) return;
+  box.innerHTML = "";
+  const list = ITEM_DEFS.filter(function(d){ return d.county === cname; });
+  if (!list.length) return;
+  const got = list.filter(function(d){ return ownsItem(d.id); }).length;
+  const t = document.createElement("div");
+  t.className = "section-title"; t.style.fontSize = "1rem";
+  t.textContent = "🎒 本縣市道具 " + got + " / " + list.length;
+  box.appendChild(t);
+  const row = document.createElement("div"); row.className = "item-mini";
+  list.forEach(function(d){ row.appendChild(itemSlotEl(d, 44)); });
+  box.appendChild(row);
+  // 託付提示：這個縣市有人在等你交付東西
+  const pd = pendingDeliveryFor(cname);
+  if (pd){
+    const tip = document.createElement("div");
+    tip.className = "chain-reward"; tip.style.margin = "0 0 12px";
+    tip.textContent = "📦 " + CHAR_BY_KEY[pd.receiver].name + "正在這裡等你交付「" + ITEM_BY_ID[pd.item].name + "」";
+    box.appendChild(tip);
+  }
+}
+// 任務卡：鎖定／獎勵提示。回傳 true 表示目前被鎖住
+function decorateChainCard(card, chain){
+  const locked = chainIsLocked(chain);
+  if (locked){
+    card.classList.add("locked");
+    const el = document.createElement("div"); el.className = "chain-lock";
+    el.textContent = "🔒 " + chainLocks(chain).map(function(l){ return l.type === "item" ? "需要道具：" + lockShortText(l) : lockShortText(l); }).join("；") + "（點擊查看）";
+    card.appendChild(el);
+  }
+  const rw = (ITEM_REWARDS[chain.id] || []).filter(function(id){ return !ownsItem(id); });
+  if (rw.length){
+    const r = document.createElement("div"); r.className = "chain-reward";
+    r.textContent = "🎁 完成後可獲得：" + rw.map(function(id){ return ITEM_BY_ID[id].name; }).join("、");
+    card.appendChild(r);
+  }
+  return locked;
+}
+function renderInventoryScreen(){
+  grantItems(false);
+  const sel = document.getElementById("inventory-filter");
+  if (!sel.dataset.init){
+    sel.dataset.init = "1";
+    sel.innerHTML = '<option value="">全部地區</option>' + REGIONS.map(function(r){ return '<option value="' + r.id + '">' + r.name + '</option>'; }).join("");
+    sel.addEventListener("change", renderInventoryScreen);
+  }
+  const total = ITEM_DEFS.length, got = ITEM_DEFS.filter(function(d){ return ownsItem(d.id); }).length;
+  document.getElementById("inventory-count").textContent = "已收集 " + got + " / " + total + " 件道具（" + Math.round(got / total * 100) + "%）· 點擊道具可查看說明與用途";
+  const body = document.getElementById("inventory-body");
+  body.innerHTML = "";
+  REGIONS.filter(function(r){ return !sel.value || r.id === sel.value; }).forEach(function(r){
+    r.counties.forEach(function(cn){
+      const list = ITEM_DEFS.filter(function(d){ return d.county === cn; });
+      if (!list.length) return;
+      const n = list.filter(function(d){ return ownsItem(d.id); }).length;
+      const t = document.createElement("div");
+      t.className = "section-title"; t.style.fontSize = "1rem";
+      t.textContent = cn + "（" + n + " / " + list.length + "）";
+      body.appendChild(t);
+      const grid = document.createElement("div"); grid.className = "item-grid";
+      list.forEach(function(d){ grid.appendChild(itemSlotEl(d, 64)); });
+      body.appendChild(grid);
+    });
+  });
+}
+
+// ---------- 交付對話：帶著託付的道具，走進對方的家鄉縣市 ----------
+let deliveryBusy = false;
+function pendingDeliveryFor(cname){
+  const plan = deliveryPlan();
+  return Object.keys(plan).map(function(k){ return plan[k]; }).find(function(d){
+    return d.county === cname && ownsItem(d.item) && !(state.delivered && state.delivered[d.giverRegion]);
+  });
+}
+function maybeDeliver(cname){
+  if (deliveryBusy || curScreenId !== "county" || currentCounty !== cname) return;
+  const d = pendingDeliveryFor(cname); if (!d) return;
+  if (unlockShowing || unlockQueue.length){ setTimeout(function(){ maybeDeliver(cname); }, 900); return; }   // 等「獲得道具」等彈窗關閉後再開始交付對話
+  const sc = DELIVERY_SCRIPTS[d.key]; if (!sc) return;
+  deliveryBusy = true;
+  const rid = regionOf[cname];
+  const roadsWereLocked = !roadsUnlocked(rid);
+  let lines = [["n", "你從背包拿出「" + ITEM_BY_ID[d.item].name + "」——那是" + CHAR_BY_KEY[d.giver].name + "託你帶來的東西。"]].concat(sc.scene);
+  if (roadsWereLocked) lines = lines.concat(sc.closing);
+  setBgmRegion(rid);
+  playSequence(scriptToSteps(lines), function(){
+    deliveryBusy = false;
+    if (!state.delivered) state.delivered = {};
+    state.delivered[d.giverRegion] = true;
+    sfx("complete");
+    queueUnlock({type:"delivery", key:d.giverRegion});
+    renderCountyScreen(cname);
+    showScreen("county");
+  });
+}
+
 function buildChainCard(chain){
   const doneN = chain.placeIds.filter(id=>state.discovered[id]).length;
   const total = chain.placeIds.length;
@@ -5713,6 +6096,9 @@ function renderCountyScreen(cname){
   }
 
   renderCountyProtagonists(cname);
+  grantItems(false);
+  renderCountyItems(cname);
+  setTimeout(function(){ maybeDeliver(cname); }, 500);
 
   const cc = COUNTY_CONTENT[cname] || {mainChains:[], sideQuests:[]};
 
@@ -5723,7 +6109,8 @@ function renderCountyScreen(cname){
   } else {
     cc.mainChains.forEach((chain, idx)=>{
       const card = buildChainCard(chain);
-      card.addEventListener("click", ()=> playChain(cname, "main", idx));
+      decorateChainCard(card, chain);
+      card.addEventListener("click", ()=>{ if (chainIsLocked(chain)){ sfx("click"); showChainLockModal(chain); return; } playChain(cname, "main", idx); });
       mainList.appendChild(card);
     });
   }
@@ -5735,7 +6122,8 @@ function renderCountyScreen(cname){
   } else {
     cc.sideQuests.forEach((chain, idx)=>{
       const card = buildChainCard(chain);
-      card.addEventListener("click", ()=> playChain(cname, "side", idx));
+      decorateChainCard(card, chain);
+      card.addEventListener("click", ()=>{ if (chainIsLocked(chain)){ sfx("click"); showChainLockModal(chain); return; } playChain(cname, "side", idx); });
       sideList.appendChild(card);
     });
   }
@@ -5896,7 +6284,7 @@ function serializeSave(){
     v:2, playerName:state.playerName, charKey:state.charKey, gender:state.gender, homeRegion:state.homeRegion,
     discovered:Object.keys(state.discovered).map(Number),
     loreScore:state.loreScore, regionDone:state.regionDone, party:state.party, seenIntro:state.seenIntro,
-    challengeBest:state.challengeBest, challengeBestBy:state.challengeBestBy, challengeBoards:state.challengeBoards, challengeSeq:state.challengeSeq, metGuides:state.metGuides, metProtagonists:state.metProtagonists
+    challengeBest:state.challengeBest, challengeBestBy:state.challengeBestBy, challengeBoards:state.challengeBoards, challengeSeq:state.challengeSeq, metGuides:state.metGuides, metProtagonists:state.metProtagonists, items:state.items||{}, delivered:state.delivered||{}
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 }
@@ -5919,6 +6307,8 @@ function loadSaveCode(code){
     state.challengeSeq = payload.challengeSeq || 0;
     state.metGuides = payload.metGuides||{};
     state.metProtagonists = payload.metProtagonists||{};
+    state.items = payload.items||{};
+    state.delivered = payload.delivered||{};
     return true;
   }catch(e){ return false; }
 }
@@ -6180,6 +6570,20 @@ function computeBadges(){
   add("🎓","主角群集合","遇見所有主角群成員", prots, protTotal);
   add("🎒","旅伴同行","隊伍中有 3 位夥伴", comps, 3);
   add("🏕️","夥伴到齊","集滿全部 "+compTotal+" 位隨行夥伴", comps, compTotal);
+  // 道具
+  const itemGot = Object.keys(state.items || {}).length, itemTotal = ITEM_DEFS.length;
+  [[5,"🎁","初得道具"],[20,"🎒","伴手禮收藏家"],[50,"🧺","在地好物達人"]].forEach(function(a){ add(a[1], a[2], "收集 " + a[0] + " 件在地道具", itemGot, a[0]); });
+  add("🏆","道具全收集","集齊全部 " + itemTotal + " 件在地道具", itemGot, itemTotal);
+  const fullItemCounties = Object.keys(COUNTY_TO_GUIDE).filter(function(cn){
+    const l = ITEM_DEFS.filter(function(d){ return d.county === cn; });
+    return l.length && l.every(function(d){ return ownsItem(d.id); });
+  }).length;
+  add("🍱","縣市名產集滿","集滿一個縣市的全部道具", fullItemCounties, 1);
+  add("🗾","十縣市名產","集滿 10 個縣市的全部道具", fullItemCounties, 10);
+  // 託付
+  const planAll = Object.keys(deliveryPlan()).length, deliveredN = Object.keys(state.delivered || {}).length;
+  add("📦","信使","完成 1 次託付（把道具交給主角群）", deliveredN, 1);
+  if (planAll > 1) add("🚚","全島信使","完成全部 " + planAll + " 件託付任務", deliveredN, planAll);
   // 挑戰
   add("⚔️","初試身手","完成一次自由挑戰", played, 1);
   add("💯","滿分挑戰","在自由挑戰中拿下全對", perfect, 1);
@@ -6265,7 +6669,7 @@ function renderChallengeScreen(){
 }
 
 function startChallenge(useFullPool, n){
-  setBgmRegion(null);
+  setBgmRegion("challenge");   // 進入測驗（對話畫面）才播放挑戰音樂
   n = n || challengeSel || 10;
   const pool = challengePool(useFullPool);
   if (pool.length === 0){ toast("目前還沒有已探索過的地名，先去旅程裡蒐集幾則吧！"); return; }
@@ -6288,6 +6692,7 @@ function startChallenge(useFullPool, n){
              isChallenge:true, scene:"🏆", label:"自由挑戰・第 "+(idx+1)+" 題／"+n };
   });
   playSequence(steps, () => {
+    setBgmRegion(null);
     stopChallengeTimer();
     const deci = Math.max(1, Math.round((Date.now()-run.startedAt)/100));
     challengeRun = null;
@@ -6335,6 +6740,7 @@ document.querySelectorAll("#bottom-nav button").forEach(btn=>{
     else if (go === "challenge"){ setChapterLabel(""); renderChallengeScreen(); renderTopbar(); showScreen("challenge"); }
     else if (go === "people"){ setChapterLabel(""); renderPeopleScreen(); renderTopbar(); showScreen("people"); }
     else if (go === "badges"){ setChapterLabel(""); renderBadgesScreen(); renderTopbar(); showScreen("badges"); }
+    else if (go === "inventory"){ setChapterLabel(""); renderInventoryScreen(); renderTopbar(); showScreen("inventory"); }
   });
 });
 
