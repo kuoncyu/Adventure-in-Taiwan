@@ -1889,14 +1889,14 @@ const PLAYER_CHARS = [
     persona:"活潑外放、嗓門大得像船笛，第一個舉手也第一個衝出教室",
     hobby:"打籃球、看棒球轉播、收集球員卡",
     friend:"蘇曉嵐（同班死黨，總被他拖著到處跑）",
-    rival:"拉利．馬耀（每年運動會的宿敵）",
+    rival:"拉利．馬耀（每年全國賽的宿敵）",
     blurb:"在基隆港邊長大的孩子，聽著船笛和雨聲長大。老師說他「安靜超過三秒就會壞掉」。" },
   { key:"shiaolan", name:"蘇曉嵐", nick:"小嵐", gender:"f", icon:"📓", region:"north", voice:"shy",
     school:"基隆市 雨港國小 六年甲班", home:"基隆．雨港國小",
     persona:"害羞內向、話很少，但觀察力驚人，小事情都記在本子裡",
     hobby:"畫速寫、寫觀察日記、收集車票",
     friend:"林承翰（從幼稚園吵到現在的鄰居）",
-    rival:"許嘉恩（縣賽作文的另一位常勝軍）",
+    rival:"許嘉恩（全國作文賽的另一位常勝軍）",
     blurb:"總是坐在教室靠窗第三排，筆記本裡畫滿了老街的屋簷和路牌。" },
 
   // ---- 中部：台中市 大墩國小 ----
@@ -1912,7 +1912,7 @@ const PLAYER_CHARS = [
     persona:"活潑外放、超愛表演，走到哪裡都能自成一個舞台",
     hobby:"跳街舞、拍短影片、蒐集貼紙",
     friend:"陳柏宇（負責被她拉去當攝影師）",
-    rival:"葉宛真（全縣才藝比賽的對手）",
+    rival:"葉宛真（全國才藝大賽的對手）",
     blurb:"班長兼熱舞社長。她說：「地名也是一種節奏啊，你唸唸看就知道了。」" },
 
   // ---- 南部：台南市 赤崁國小 ----
@@ -1937,14 +1937,14 @@ const PLAYER_CHARS = [
     persona:"沉默寡言的行動派，話不多，但看到不對的事會第一個站出來",
     hobby:"長跑、溯溪、跟著爸爸上山認路",
     friend:"潘可柔（部落裡一起長大的玩伴）",
-    rival:"林承翰（縣運一千五百公尺的老對手）",
+    rival:"林承翰（全國賽一千五百公尺的老對手）",
     blurb:"阿美族的孩子。阿公告訴他：「土地的名字，就是祖先留下來的地圖。」" },
   { key:"kerou", name:"潘可柔", nick:"可柔", gender:"f", icon:"🎶", region:"east", voice:"cheerful",
     school:"花蓮縣 縱谷國小 六年甲班", home:"花蓮．縱谷國小",
     persona:"開朗愛笑、嗓門亮，唱起歌來整條走廊都聽得到",
     hobby:"唱歌、跟阿嬤採野菜、學族語",
     friend:"拉利．馬耀（她的專屬聽眾）",
-    rival:"蘇曉嵐（兩人在全縣鄉土語文競賽相遇過三次）",
+    rival:"蘇曉嵐（兩人在全國鄉土語文競賽相遇過三次）",
     blurb:"合唱團的主唱。她說很多老地名唸起來，本來就像一首歌的開頭。" },
 
   // ---- 離島：澎湖縣 潮音國小 ----
@@ -1960,7 +1960,7 @@ const PLAYER_CHARS = [
     persona:"冷靜早熟、像個小大人，講話總是慢半拍卻一針見血",
     hobby:"蒐集貝殼、看星星、整理剪報",
     friend:"洪建霖（她的頭號麻煩製造機）",
-    rival:"蘇曉嵐（縣賽作文的另一位常勝軍）",
+    rival:"蘇曉嵐（全國作文賽的另一位常勝軍）",
     blurb:"房間的抽屜裡有一本自製的「澎湖地名冊」，寫了整整三年。" }
 ];
 const CHAR_BY_KEY = {};
@@ -2005,7 +2005,7 @@ const MEET_SCRIPTS = {
     rival:[
       {spk:"other", text:"（瞪大眼睛）……你、你怎麼會出現在我的地盤！"},
       {spk:"me", text:"旅行到這裡而已，別緊張，我沒打算跟你比賽。"},
-      {spk:"other", text:"哼，隨便你怎麼說，反正下次縣運，我一定會贏回一千五百公尺的冠軍！"}]
+      {spk:"other", text:"哼，隨便你怎麼說，反正下次全國賽，我一定會贏回一千五百公尺的冠軍！"}]
   },
   shiaolan: {
     friend:[
@@ -2060,7 +2060,7 @@ const MEET_SCRIPTS = {
       {spk:"other", text:"……抱歉，剛剛在山上收訊不好。走吧，我帶妳去看一個很少人知道的地方。"}],
     rival:[
       {spk:"other", text:"（停下腳步，語氣平淡卻認真）……又見面了。"},
-      {spk:"me", text:"哈，這次我先聲明，下次縣運我不會再讓你贏。"},
+      {spk:"me", text:"哈，這次我先聲明，下次全國賽我不會再讓你贏。"},
       {spk:"other", text:"……我等著。"}]
   },
   kerou: {
@@ -2103,11 +2103,11 @@ const MEET_SCRIPTS = {
 // ---------------------------------------------------------------------
 const PAIR_MEET_SCRIPTS = {
   hanlin_poyu:[
-    {spk:"poyu", text:"（滑著手機頭也不抬）喔，你就是基隆那個運動會常常拿冠軍的？"},
+    {spk:"poyu", text:"（滑著手機頭也不抬）喔，你就是基隆那個全國賽常常拿冠軍的？"},
     {spk:"hanlin", text:"算是啦！你在玩遊戲喔？"},
     {spk:"poyu", text:"查資料啦，只是介面比較好上手而已。你們基隆的地名故事應該也不少吧？"}],
   hanlin_sihyu:[
-    {spk:"sihyu", text:"（拍手）欸你是不是基隆運動會那個很會衝的男生！"},
+    {spk:"sihyu", text:"（拍手）欸你是不是基隆那個在全國賽很會衝的男生！"},
     {spk:"hanlin", text:"咦，妳怎麼知道！"},
     {spk:"sihyu", text:"我們老師放轉播影片給全校看啊，你衝線那段超帥的，我都想幫你編舞慶祝了！"}],
   hanlin_zihchian:[
@@ -2120,14 +2120,14 @@ const PAIR_MEET_SCRIPTS = {
     {spk:"wanjhen", text:"呵呵，聽說基隆廟口也有很多好吃的，下次換你帶我去吃！"}],
   hanlin_kerou:[
     {spk:"kerou", text:"（開心揮手）你是林承翰對不對！我聽阿利提過你，說你是他的老對手！"},
-    {spk:"hanlin", text:"對啊，我們每年縣運都會碰上，他很難纏。"},
+    {spk:"hanlin", text:"對啊，我們每年全國賽都會碰上，他很難纏。"},
     {spk:"kerou", text:"他私底下其實有偷偷練習喔，你要小心一點才行！"}],
   hanlin_jianlin:[
-    {spk:"jianlin", text:"（賊笑）欸，聽說你運動會都用衝的，跟我用滑板一樣快耶！"},
+    {spk:"jianlin", text:"（賊笑）欸，聽說你在全國賽都用衝的，跟我用滑板一樣快耶！"},
     {spk:"hanlin", text:"才不一樣，滑板不會喘，我可是會喘的！"},
     {spk:"jianlin", text:"哈哈，那下次比賽，看誰先喘停。"}],
   hanlin_jiaen:[
-    {spk:"jiaen", text:"（平靜地打量）你就是那個縣運常常上台領獎的？"},
+    {spk:"jiaen", text:"（平靜地打量）你就是那個全國賽常常上台領獎的？"},
     {spk:"hanlin", text:"對啊，妳怎麼知道？"},
     {spk:"jiaen", text:"剪報上看過，我有整理各縣市小朋友的新聞，你的名字出現過三次。"}],
   shiaolan_poyu:[
@@ -3722,7 +3722,7 @@ function unlockContent(u){
       '<div class="detail-old" style="text-align:center;">' + escapeHtml(regionTitleOf(rid)) + '・📜 劇情任務道具</div>'+
       '<div class="detail-body">' + escapeHtml(d.desc) + '</div>'+
       (plan && sc ? '<div class="detail-body" style="margin-top:8px;">' + giver.icon + ' ' + escapeHtml(giver.name) + '：「' + escapeHtml(sc.give) + '」</div>'+
-        '<div class="detail-body" style="margin-top:6px;"><b>📦 託付任務：</b>把「' + escapeHtml(d.name) + '」交給 ' + escapeHtml(recv.name) + '（' + escapeHtml(plan.county) + '）。帶著它走進那個縣市，對話就會自動開始，完成後會開啟更多劇情，道具也會變成灰色。</div>'
+        '<div class="detail-body" style="margin-top:6px;"><b>📦 託付任務：</b>把「' + escapeHtml(d.name) + '」交給 ' + escapeHtml(recv.name) + '（' + escapeHtml(plan.county) + '）。等你抵達「' + escapeHtml(regionTitleOf(plan.receiverRegion)) + '」，在主線劇情裡遇見他時，就能當面交給他；完成後會開啟更多劇情，道具也會變成灰色。</div>'
         : '<div class="detail-body" style="margin-top:8px;">這趟旅程沒有人需要它，就當作紀念吧。</div>')};
   }
   if (u.type === "delivery"){
@@ -4044,14 +4044,14 @@ const PLAYER_MAIN_SCRIPTS = { lali: {
    ["n","退潮的潮間帶上，兩個蹲在礁石邊的身影，被你的腳步聲吸引，回過頭來。"],
    ["jianlin","（探頭）欸！你那雙溯溪鞋，不是本地人吧？"],
    ["me","……花蓮。拉利。"],
-   ["jiaen","（慢半拍）許嘉恩。他是洪建霖，澎湖最大的麻煩。你的名字我在縣運剪報上看過——一千五百公尺，旁邊總跟著林承翰。"],
+   ["jiaen","（慢半拍）許嘉恩。他是洪建霖，澎湖最大的麻煩。你的名字我在全國賽剪報上看過——一千五百公尺，旁邊總跟著林承翰。"],
    ["jianlin","哇，宿敵！超有故事！溯溪跟抓螃蟹，來比一場！"],
    ["me","……不一樣的事，沒得比。"],
    ["jianlin","那就兩個都比！"],
    ["jiaen","……他闖禍，我善後。走吧，陪你查地名。"],
    ["mentor","洪建霖、許嘉恩，就陪拉利，把這片海上的名字一起找回來吧。"]],
   farewell:[
-   ["jiaen","（闔上剪報本）這趟的紀錄，寫好寄我，我收進地名冊。北部有個蘇曉嵐，縣賽作文常碰到——不是挑釁，是問候：許嘉恩說，下次作文見。"],
+   ["jiaen","（闔上剪報本）這趟的紀錄，寫好寄我，我收進地名冊。北部有個蘇曉嵐，全國作文賽常碰到——不是挑釁，是問候：許嘉恩說，下次作文見。"],
    ["me","……好，會帶到。"],
    ["jianlin","還有！中部有個陳柏宇，線上嘴我三年的本島仔，幫我說：線上等著，別想跑！"],
    ["me","……會說。"],
@@ -4062,7 +4062,7 @@ const PLAYER_MAIN_SCRIPTS = { lali: {
    ["n","鹹鹹的海風迎面吹來，你才踏進基隆，就被一聲大喊釘在原地。"],
    ["hanlin","拉利．馬耀！！你怎麼跑到我的地盤！是來探底的吧！"],
    ["me","……旅行。路過。"],
-   ["hanlin","少來！縣運一千五百公尺，明年我一定贏回來！"],
+   ["hanlin","少來！全國賽一千五百公尺，明年我一定贏回來！"],
    ["shiaolan","（抱著筆記本，小聲）……你就是林承翰念了三天的那個拉利？"],
    ["hanlin","小嵐！別洩我的底啦！"],
    ["me","……妳是蘇曉嵐？潘可柔和許嘉恩，託我帶話。"],
@@ -4073,7 +4073,7 @@ const PLAYER_MAIN_SCRIPTS = { lali: {
    ["shiaolan","……那我負責畫下來，你們負責吵。"],
    ["mentor","林承翰、蘇曉嵐，就陪拉利，走進這片雨霧裡的老地名吧。"]],
   farewell:[
-   ["hanlin","（喘著氣，難得認真）跟你一起跑了這幾天，才發現你真的很強……但縣運我不會再輸了！"],
+   ["hanlin","（喘著氣，難得認真）跟你一起跑了這幾天，才發現你真的很強……但全國賽我不會再輸了！"],
    ["me","……我等你。"],
    ["hanlin","（把一張球員卡塞進你手裡）借你當幸運符，明年比賽再還我！"],
    ["me","……我沒有東西回你。"],
@@ -4143,7 +4143,7 @@ PLAYER_MAIN_SCRIPTS.kerou = {
   farewell:[
    ["lali","……要去離島了。"],
    ["me","嗯！（哼了一小段歌）我唱給海聽！"],
-   ["lali","……北部有個林承翰，每年跟我賽跑的那個。幫我說：明年縣運見。"],
+   ["lali","……北部有個林承翰，每年跟我賽跑的那個。幫我說：明年全國賽見。"],
    ["me","包在我身上！你也要好好吃飯喔！"],
    ["lali","……妳的歌，我會等。"]]},
  island:{
@@ -4172,7 +4172,7 @@ PLAYER_MAIN_SCRIPTS.kerou = {
    ["hanlin","欸！妳的嗓門跟我有得比耶！哪來的？"],
    ["me","花蓮！我是潘可柔，阿利的朋友。你是林承翰吧？他說你是宿敵！"],
    ["hanlin","拉利那傢伙提過我？他有沒有說要贏我？"],
-   ["me","他說：明年縣運見！"],
+   ["me","他說：明年全國賽見！"],
    ["hanlin","（握拳）好！我等著！"],
    ["shiaolan","（抱著筆記本，小小聲）……潘可柔。語文競賽，第三次碰到了。"],
    ["me","蘇曉嵐！終於在妳的地盤見面啦！許嘉恩也託我帶話：下次作文見！"],
@@ -4250,7 +4250,7 @@ PLAYER_MAIN_SCRIPTS.jianlin = {
   farewell:[
    ["jiaen","（闔上剪報本）……你真的要去北部了。"],
    ["me","放心啦，這次不闖禍！"],
-   ["jiaen","……你上次也這麼說。北部有個蘇曉嵐，縣賽作文常碰到。不是挑釁，是問候：許嘉恩說，下次作文見。幫我帶到。"],
+   ["jiaen","……你上次也這麼說。北部有個蘇曉嵐，全國作文賽常碰到。不是挑釁，是問候：許嘉恩說，下次作文見。幫我帶到。"],
    ["me","包在我身上！"],
    ["jiaen","（遞上一枚小貝殼）拿著。潮水退了還會回來，你也是。"],
    ["me","好！我帶最酷的故事回來！"]]},
@@ -4259,7 +4259,7 @@ PLAYER_MAIN_SCRIPTS.jianlin = {
    ["n","鹹鹹的海風迎面吹來，跟澎湖有點像，只是港口大得多。"],
    ["me","哇，這港口比馬公的碼頭還大！"],
    ["hanlin","（大喊）那當然，基隆港是我的主場！你哪來的？"],
-   ["me","澎湖！聽說你運動會都用衝的，跟我用滑板一樣快！"],
+   ["me","澎湖！聽說你在全國賽都用衝的，跟我用滑板一樣快！"],
    ["hanlin","才不一樣，滑板不會喘，我可是會喘的！"],
    ["shiaolan","（小小聲）……那個，你手裡的螃蟹，可以放下來嗎？"],
    ["me","咦，被發現了！妳是蘇曉嵐吧？嘉恩託我帶話：下次作文見！"],
@@ -4360,9 +4360,9 @@ PLAYER_MAIN_SCRIPTS.jiaen = {
    ["hanlin","（大喊）欸！妳看起來好冷靜喔，哪來的？"],
    ["me","……許嘉恩，澎湖來的。你是林承翰，剪報上你的名字出現過三次。"],
    ["hanlin","三次？我這麼有名！"],
-   ["me","……都是運動會。"],
+   ["me","……都是全國賽。"],
    ["shiaolan","（推了推書包背帶，小聲）……許嘉恩。"],
-   ["me","（慢半拍點頭）……好久不見。縣賽作文，這次我不會輸。"],
+   ["me","（慢半拍點頭）……好久不見。全國作文賽，這次我不會輸。"],
    ["shiaolan","……我也是。"],
    ["me","……在那之前，要不要先聽聽我蒐集的地名故事？"],
    ["shiaolan","……好。我用畫的記下來。"],
@@ -4868,7 +4868,7 @@ const PROTAGONIST_FAREWELL = {
     {spk:"other", text:"（笑咪咪揮手）儘管練，我也不會輸的。路上小心，宛真等妳凱旋歸來！"}]},
   lali:{rival:[
     {spk:"other", text:"（停下腳步）……你要走了。"},
-    {spk:"me", text:"對啊，最後一站是離島了。這次算我先走一步，下次縣運再分高下。"},
+    {spk:"me", text:"對啊，最後一站是離島了。這次算我先走一步，下次全國賽再分高下。"},
     {spk:"other", text:"……我會繼續練習的。下次，我不會再輸給你。"},
     {spk:"me", text:"哈，我等著。路上小心，阿利。"},
     {spk:"other", text:"……你也是。"}],
@@ -5754,7 +5754,7 @@ const QUEST_ITEM = {"north": "it03", "central": "it30", "south": "it43", "east":
 const REGION_PASS = {"north": "it06", "central": "it29", "south": "it44", "east": "it68", "island": "it77"};   // 各區主線通關可得的通行證（開啟該區各縣市的支線任務）
 const ITEM_GATES = {"main-基隆市-2": ["it01"], "side-基隆市-1": ["it02"], "main-台北市-2": ["it04"], "main-台北市-4": ["it05"], "side-台北市-3": ["it07"], "main-新北市-4": ["it08"], "main-新北市-9": ["it09"], "main-新北市-3": ["it10"], "side-新北市-1": ["it11"], "main-桃園市-3": ["it13"], "side-桃園市-3": ["it14"], "road-桃園市-1": ["it15"], "side-桃園市-2": ["it12"], "main-新竹市-2": ["it16"], "road-新竹市-1": ["it17"], "side-新竹市-2": ["it18"], "main-新竹縣-2": ["it19"], "side-新竹縣-1": ["it20"], "side-新竹縣-2": ["it21"], "road-新竹縣-1": ["it22"], "main-苗栗縣-2": ["it23"], "side-苗栗縣-2": ["it24"], "side-苗栗縣-3": ["it26"], "road-苗栗縣-1": ["it25"], "main-台中市-2": ["it27"], "side-台中市-1": ["it28"], "main-彰化縣-2": ["it31"], "main-彰化縣-4": ["it32"], "side-彰化縣-3": ["it33"], "road-彰化縣-1": ["it34"], "main-南投縣-2": ["it35"], "side-南投縣-1": ["it36"], "side-南投縣-2": ["it37"], "road-南投縣-1": ["it38"], "main-雲林縣-2": ["it39"], "main-雲林縣-3": ["it40"], "side-雲林縣-1": ["it41"], "side-嘉義市-1": ["it42"], "main-嘉義縣-3": ["it45"], "side-嘉義縣-1": ["it46"], "side-嘉義縣-2": ["it47"], "side-嘉義縣-3": ["it48"], "main-台南市-2": ["it49"], "main-台南市-4": ["it50"], "main-台南市-6": ["it51"], "main-台南市-8": ["it52"], "main-高雄市-4": ["it53"], "main-高雄市-5": ["it54"], "main-高雄市-6": ["it55"], "main-高雄市-9": ["it56"], "road-高雄市-1": ["it57"], "main-屏東縣-2": ["it58"], "main-屏東縣-4": ["it59"], "main-屏東縣-6": ["it60"], "main-屏東縣-7": ["it61"], "main-宜蘭縣-2": ["it62"], "side-宜蘭縣-1": ["it63"], "side-宜蘭縣-2": ["it64"], "side-宜蘭縣-3": ["it65"], "main-花蓮縣-2": ["it66"], "main-花蓮縣-3": ["it67"], "main-台東縣-2": ["it69"], "main-台東縣-3": ["it70"], "side-台東縣-3": ["it72"], "main-澎湖縣-2": ["it73"], "side-澎湖縣-2": ["it74"], "main-金門縣-2": ["it76"], "road-金門縣-1": ["it78"], "side-連江縣-1": ["it79"], "side-連江縣-2": ["it80"], "road-連江縣-1": ["it81"]};
 const DELIVERY_CAND = {"north": [["shiaolan", "kerou"], ["shiaolan", "jiaen"], ["hanlin", "lali"]], "east": [["lali", "hanlin"], ["kerou", "shiaolan"]], "island": [["jiaen", "shiaolan"], ["jianlin", "poyu"]], "central": [["sihyu", "wanjhen"], ["poyu", "jianlin"]], "south": [["wanjhen", "sihyu"]]};
-const DELIVERY_SCRIPTS = {"shiaolan>kerou": {"give": "……這張明信片，是我在正濱漁港畫的。麻煩你交給花蓮的潘可柔。她說她唱得更好聽了——我想讓她知道，我畫得也更好了。", "scene": [["n", "你在花蓮的街角找到了潘可柔，她正對著鄰居們練習新學的族語歌。"], ["kerou", "咦？有人在找我？——啊，是從北邊來的旅人！"], ["me", "蘇曉嵐託我把這個交給妳。（遞出彩色屋明信片）"], ["kerou", "（睜大眼睛）哇……基隆的彩色房子！她畫得好細，連屋簷上的雨滴都有！"], ["kerou", "那個比賽時一句話都不肯多說的蘇曉嵐，原來都用畫在跟我說話。"], ["me", "她說，她畫得也更好了。"], ["kerou", "（大笑）好！那我也不能輸！回去幫我說：下次比賽，我的歌聲會更亮！"]], "closing": [["kerou", "（清了清喉嚨，哼起一小段歌）這是我阿嬤教的，花蓮的路名，全都藏在歌裡。"], ["kerou", "你要是在查地名，就沿著歌走一遍吧，走完你就知道這些路為什麼叫這個名字了。"], ["n", "可柔把家鄉路名背後的故事，一句一句唱給你聽。"]]}, "shiaolan>jiaen": {"give": "……這張明信片，請你交給澎湖的許嘉恩。縣賽作文，我們都寫得很好。這次……我想用畫，跟她打招呼。", "scene": [["n", "退潮後的澎湖，許嘉恩正蹲在礁石邊整理剪報，看見你走近，才慢慢站起來。"], ["jiaen", "……你是從北邊來的？看你手上拿的東西，我大概猜到了。"], ["me", "蘇曉嵐託我交給妳。（遞出彩色屋明信片）"], ["jiaen", "……（沉默了一會）畫得很安靜。筆觸很慢，就像她寫作文的樣子。"], ["jiaen", "縣賽作文，我輸給她兩次，贏她三次。我每一次都記得。"], ["jiaen", "回去告訴她：下次作文見。……還有，這張，我要收進剪報本。"]], "closing": [["jiaen", "澎湖的路都被風吹出了脾氣。你想聽的話，我可以告訴你它們的名字是怎麼來的。"], ["n", "嘉恩慢慢地，把離島路名的故事一件一件說給你聽。"]]}, "hanlin>lali": {"give": "（大聲）幫我把這張基隆的彩色屋明信片交給拉利．馬耀！告訴他，縣運一千五百公尺，我今年一定贏！這張是我挑的，最帥！", "scene": [["n", "花蓮的溪邊，拉利正安靜地調整鞋帶，聽見腳步聲，抬頭看了你一眼。"], ["lali", "……你找我？"], ["me", "林承翰託我帶東西給你。（遞出彩色屋明信片）"], ["lali", "……（接過來，看了很久）基隆的房子。顏色很多。"], ["lali", "……他說他會贏。"], ["me", "他說，這張是他挑的，最帥。"], ["lali", "……（嘴角微微揚起）告訴他，明年縣運見。我不會讓。"]], "closing": [["lali", "……你要查路名的話，跟我來。花蓮的路，我閉著眼睛都認得。"], ["n", "拉利帶你走了一段花蓮的路，把每一條路名的由來，都慢慢告訴了你。"]]}, "lali>hanlin": {"give": "……這個，給林承翰。蘭嶼的拼板舟，要很多人一起划才會到。……縣運，我也不會讓。", "scene": [["n", "基隆港邊，林承翰一看到你，就隔著半條街大聲揮手。"], ["hanlin", "欸！是你！你從花蓮那邊來的對不對！有沒有看到拉利！"], ["me", "他託我帶東西給你。（遞出蘭嶼拼板舟）"], ["hanlin", "（愣住）……船？拼板舟？他送我一艘船！"], ["hanlin", "（大笑）哈哈哈，拉利那傢伙！這是在叫我「別輸給風」對不對！"], ["me", "他說，縣運，他不會讓。"], ["hanlin", "我也不會！回去告訴他，我今年每天加練！"]], "closing": [["hanlin", "（把小船小心收好）對了，你不是在查地名嗎？基隆的路名我最熟，走，我帶你去！"], ["n", "承翰一路大喊，把基隆的路名故事一個個講給你聽。"]]}, "kerou>shiaolan": {"give": "這艘船，請你交給基隆的蘇曉嵐！蘭嶼的拼板舟，聽說能把歌聲帶過海，我想把我唱的歌，也帶給她！", "scene": [["n", "基隆的雨剛停，蘇曉嵐坐在港邊的長椅上，攤開速寫本。"], ["shiaolan", "……（抬頭，小聲）有人……找我？"], ["me", "潘可柔託我帶來的。（遞出蘭嶼拼板舟）"], ["shiaolan", "……可柔……？（接過小船，輕輕轉了一圈）……拼板舟。她說過，能把歌聲帶過海的船。"], ["shiaolan", "……比賽的時候，她一唱歌，我就沒辦法畫了。"], ["shiaolan", "……幫我回她：我會畫一張，換她的歌。"]], "closing": [["shiaolan", "……你想聽基隆路名的由來嗎？……我的筆記本裡，有。"], ["n", "曉嵐翻開速寫本，把基隆的路名故事，一頁一頁念給你聽。"]]}, "jiaen>shiaolan": {"give": "這顆玄武岩，請交給基隆的蘇曉嵐。澎湖的石頭，是被海風磨出來的。縣賽作文，下次見。", "scene": [["n", "蘇曉嵐在港邊的紅磚牆旁，正低頭畫著什麼，一看到你，立刻把本子闔起來。"], ["shiaolan", "……你好。"], ["me", "許嘉恩託我交給妳的。（遞出玄武岩小石）"], ["shiaolan", "……（雙手接過，摸了摸小石）好重。表面……有很多小洞。"], ["shiaolan", "……嘉恩說，海風把石頭磨成這樣。……我覺得，這是在說她的作文。"], ["shiaolan", "……幫我回：下次作文見。我不會輸。"]], "closing": [["shiaolan", "……你想聽基隆路名的故事嗎？我筆記本裡有，來。"], ["n", "曉嵐小小聲地，把基隆路名背後的故事說給你聽。"]]}, "jianlin>poyu": {"give": "（賊笑）幫我把這顆石頭丟給台中的陳柏宇！告訴他：線上等著，別想跑！澎湖的石頭，砸過去才夠力！", "scene": [["n", "台中的街角，陳柏宇一手滑著手機，一手拿著鋼彈模型，眼皮抬都沒抬。"], ["poyu", "……有事？"], ["me", "洪建霖託我交給你。（遞出玄武岩小石）"], ["poyu", "……石頭？他寄石頭給我？這是新型態的嘴砲嗎。"], ["poyu", "（翻過來看）有洞，還挺重。……不錯，拿來壓模型說明書剛好。"], ["poyu", "回去告訴他：線上見，我今天的攻略又更新了。"]], "closing": [["poyu", "……還有，你要是在查地名的話，台中的我倒是懂一點。別誤會，我只是不想你被別人亂講。"], ["n", "柏宇一邊吐槽，一邊把台中路名的故事說給你聽。"]]}, "sihyu>wanjhen": {"give": "這張『成功』車票，請交給台南的葉宛真！才藝比賽，這次我要用舞蹈贏過她的米糕！記得告訴她，成功的意思，就是我會成功！", "scene": [["n", "台南的廟埕邊，葉宛真剛蒸好一籠米糕，熱氣在陽光裡升起。"], ["wanjhen", "哎呀，旅人來得正好，要不要先吃一塊？"], ["me", "黃思妤託我把這個交給妳。（遞出追分成功車票）"], ["wanjhen", "（接過車票，笑瞇了眼）追分到成功……她是在跟我說，這次比賽她會成功？"], ["wanjhen", "思妤真的很有精神。社辦那件事……我也沒輸給她喔。"], ["wanjhen", "你回去時，幫我帶一份米糕給她好不好？才藝比賽那天，我們舞台上見。"]], "closing": [["wanjhen", "你是來查路名的對吧？子謙說這一帶他查過很多次，我邊走邊說給你聽。"], ["n", "宛真一路笑咪咪地，把台南的路名故事慢慢說給你聽。"]]}, "poyu>jianlin": {"give": "這張車票，丟給澎湖那個洪建霖。『追分』『成功』，意思是祝他成功——前提是他別在線上被我爆掉。", "scene": [["n", "澎湖的海風大得能把話吹走，洪建霖正蹲在礁石上抓螃蟹。"], ["jianlin", "（回頭，眼睛發亮）欸欸欸！有人來了！你是不是從本島來的！"], ["me", "陳柏宇託我交給你。（遞出追分成功車票）"], ["jianlin", "（跳起來）陳柏宇！那個本島仔！他終於肯理我了！"], ["jianlin", "追分、成功……他是在酸我還是祝福我？這車票怎麼看都是兩個都有！"], ["jianlin", "回去幫我說：線上等著，我今天就連升三級！"]], "closing": [["jianlin", "對了，你是不是在查地名？澎湖的路我最熟，我帶你去！不過，先別告訴嘉恩我又跑出來玩……"], ["n", "建霖一邊東張西望，一邊把離島路名的故事講給你聽。"]]}, "wanjhen>sihyu": {"give": "這盒方塊酥，請帶給台中的黃思妤。才藝比賽之前，先吃點甜的，才有力氣跳舞，對吧？", "scene": [["n", "台中的街頭，黃思妤正對著手機鏡頭跳舞，周圍圍了一圈拍手的人。"], ["sihyu", "（收舞，喘氣）哇！有觀眾！——咦？你手上拿的是什麼？"], ["me", "葉宛真託我交給妳。（遞出嘉義方塊酥）"], ["sihyu", "方塊酥！！宛真的點心耶！她是在收買我嗎？"], ["sihyu", "（咬一口）……好吃。可惡，這樣我怎麼忍心跟她吵社辦。"], ["sihyu", "回去告訴她：才藝比賽，我不會手下留情！……但是點心要再寄一盒。"]], "closing": [["sihyu", "對了，你有在查地名嗎？台中的我們可熟了，我邊跳邊講給你聽！"], ["n", "思妤邊跳邊說，把台中路名的故事熱熱鬧鬧地講給你聽。"]]}};
+const DELIVERY_SCRIPTS = {"shiaolan>kerou": {"give": "……這張明信片，是我在正濱漁港畫的。麻煩你交給花蓮的潘可柔。她說她唱得更好聽了——我想讓她知道，我畫得也更好了。", "scene": [["n", "你在花蓮的街角找到了潘可柔，她正對著鄰居們練習新學的族語歌。"], ["kerou", "咦？有人在找我？——啊，是從北邊來的旅人！"], ["me", "蘇曉嵐託我把這個交給妳。（遞出彩色屋明信片）"], ["kerou", "（睜大眼睛）哇……基隆的彩色房子！她畫得好細，連屋簷上的雨滴都有！"], ["kerou", "那個比賽時一句話都不肯多說的蘇曉嵐，原來都用畫在跟我說話。"], ["me", "她說，她畫得也更好了。"], ["kerou", "（大笑）好！那我也不能輸！回去幫我說：下次比賽，我的歌聲會更亮！"]], "closing": [["kerou", "（清了清喉嚨，哼起一小段歌）這是我阿嬤教的，花蓮的路名，全都藏在歌裡。"], ["kerou", "你要是在查地名，就沿著歌走一遍吧，走完你就知道這些路為什麼叫這個名字了。"], ["n", "可柔把家鄉路名背後的故事，一句一句唱給你聽。"]]}, "shiaolan>jiaen": {"give": "……這張明信片，請你交給澎湖的許嘉恩。全國作文賽，我們都寫得很好。這次……我想用畫，跟她打招呼。", "scene": [["n", "退潮後的澎湖，許嘉恩正蹲在礁石邊整理剪報，看見你走近，才慢慢站起來。"], ["jiaen", "……你是從北邊來的？看你手上拿的東西，我大概猜到了。"], ["me", "蘇曉嵐託我交給妳。（遞出彩色屋明信片）"], ["jiaen", "……（沉默了一會）畫得很安靜。筆觸很慢，就像她寫作文的樣子。"], ["jiaen", "全國作文賽，我輸給她兩次，贏她三次。我每一次都記得。"], ["jiaen", "回去告訴她：下次作文見。……還有，這張，我要收進剪報本。"]], "closing": [["jiaen", "澎湖的路都被風吹出了脾氣。你想聽的話，我可以告訴你它們的名字是怎麼來的。"], ["n", "嘉恩慢慢地，把離島路名的故事一件一件說給你聽。"]]}, "hanlin>lali": {"give": "（大聲）幫我把這張基隆的彩色屋明信片交給拉利．馬耀！告訴他，全國賽一千五百公尺，我今年一定贏！這張是我挑的，最帥！", "scene": [["n", "花蓮的溪邊，拉利正安靜地調整鞋帶，聽見腳步聲，抬頭看了你一眼。"], ["lali", "……你找我？"], ["me", "林承翰託我帶東西給你。（遞出彩色屋明信片）"], ["lali", "……（接過來，看了很久）基隆的房子。顏色很多。"], ["lali", "……他說他會贏。"], ["me", "他說，這張是他挑的，最帥。"], ["lali", "……（嘴角微微揚起）告訴他，明年全國賽見。我不會讓。"]], "closing": [["lali", "……你要查路名的話，跟我來。花蓮的路，我閉著眼睛都認得。"], ["n", "拉利帶你走了一段花蓮的路，把每一條路名的由來，都慢慢告訴了你。"]]}, "lali>hanlin": {"give": "……這個，給林承翰。蘭嶼的拼板舟，要很多人一起划才會到。……全國賽，我也不會讓。", "scene": [["n", "基隆港邊，林承翰一看到你，就隔著半條街大聲揮手。"], ["hanlin", "欸！是你！你從花蓮那邊來的對不對！有沒有看到拉利！"], ["me", "他託我帶東西給你。（遞出蘭嶼拼板舟）"], ["hanlin", "（愣住）……船？拼板舟？他送我一艘船！"], ["hanlin", "（大笑）哈哈哈，拉利那傢伙！這是在叫我「別輸給風」對不對！"], ["me", "他說，全國賽，他不會讓。"], ["hanlin", "我也不會！回去告訴他，我今年每天加練！"]], "closing": [["hanlin", "（把小船小心收好）對了，你不是在查地名嗎？基隆的路名我最熟，走，我帶你去！"], ["n", "承翰一路大喊，把基隆的路名故事一個個講給你聽。"]]}, "kerou>shiaolan": {"give": "這艘船，請你交給基隆的蘇曉嵐！蘭嶼的拼板舟，聽說能把歌聲帶過海，我想把我唱的歌，也帶給她！", "scene": [["n", "基隆的雨剛停，蘇曉嵐坐在港邊的長椅上，攤開速寫本。"], ["shiaolan", "……（抬頭，小聲）有人……找我？"], ["me", "潘可柔託我帶來的。（遞出蘭嶼拼板舟）"], ["shiaolan", "……可柔……？（接過小船，輕輕轉了一圈）……拼板舟。她說過，能把歌聲帶過海的船。"], ["shiaolan", "……比賽的時候，她一唱歌，我就沒辦法畫了。"], ["shiaolan", "……幫我回她：我會畫一張，換她的歌。"]], "closing": [["shiaolan", "……你想聽基隆路名的由來嗎？……我的筆記本裡，有。"], ["n", "曉嵐翻開速寫本，把基隆的路名故事，一頁一頁念給你聽。"]]}, "jiaen>shiaolan": {"give": "這顆玄武岩，請交給基隆的蘇曉嵐。澎湖的石頭，是被海風磨出來的。全國作文賽，下次見。", "scene": [["n", "蘇曉嵐在港邊的紅磚牆旁，正低頭畫著什麼，一看到你，立刻把本子闔起來。"], ["shiaolan", "……你好。"], ["me", "許嘉恩託我交給妳的。（遞出玄武岩小石）"], ["shiaolan", "……（雙手接過，摸了摸小石）好重。表面……有很多小洞。"], ["shiaolan", "……嘉恩說，海風把石頭磨成這樣。……我覺得，這是在說她的作文。"], ["shiaolan", "……幫我回：下次作文見。我不會輸。"]], "closing": [["shiaolan", "……你想聽基隆路名的故事嗎？我筆記本裡有，來。"], ["n", "曉嵐小小聲地，把基隆路名背後的故事說給你聽。"]]}, "jianlin>poyu": {"give": "（賊笑）幫我把這顆石頭丟給台中的陳柏宇！告訴他：線上等著，別想跑！澎湖的石頭，砸過去才夠力！", "scene": [["n", "台中的街角，陳柏宇一手滑著手機，一手拿著鋼彈模型，眼皮抬都沒抬。"], ["poyu", "……有事？"], ["me", "洪建霖託我交給你。（遞出玄武岩小石）"], ["poyu", "……石頭？他寄石頭給我？這是新型態的嘴砲嗎。"], ["poyu", "（翻過來看）有洞，還挺重。……不錯，拿來壓模型說明書剛好。"], ["poyu", "回去告訴他：線上見，我今天的攻略又更新了。"]], "closing": [["poyu", "……還有，你要是在查地名的話，台中的我倒是懂一點。別誤會，我只是不想你被別人亂講。"], ["n", "柏宇一邊吐槽，一邊把台中路名的故事說給你聽。"]]}, "sihyu>wanjhen": {"give": "這張『成功』車票，請交給台南的葉宛真！才藝比賽，這次我要用舞蹈贏過她的米糕！記得告訴她，成功的意思，就是我會成功！", "scene": [["n", "台南的廟埕邊，葉宛真剛蒸好一籠米糕，熱氣在陽光裡升起。"], ["wanjhen", "哎呀，旅人來得正好，要不要先吃一塊？"], ["me", "黃思妤託我把這個交給妳。（遞出追分成功車票）"], ["wanjhen", "（接過車票，笑瞇了眼）追分到成功……她是在跟我說，這次比賽她會成功？"], ["wanjhen", "思妤真的很有精神。社辦那件事……我也沒輸給她喔。"], ["wanjhen", "你回去時，幫我帶一份米糕給她好不好？才藝比賽那天，我們舞台上見。"]], "closing": [["wanjhen", "你是來查路名的對吧？子謙說這一帶他查過很多次，我邊走邊說給你聽。"], ["n", "宛真一路笑咪咪地，把台南的路名故事慢慢說給你聽。"]]}, "poyu>jianlin": {"give": "這張車票，丟給澎湖那個洪建霖。『追分』『成功』，意思是祝他成功——前提是他別在線上被我爆掉。", "scene": [["n", "澎湖的海風大得能把話吹走，洪建霖正蹲在礁石上抓螃蟹。"], ["jianlin", "（回頭，眼睛發亮）欸欸欸！有人來了！你是不是從本島來的！"], ["me", "陳柏宇託我交給你。（遞出追分成功車票）"], ["jianlin", "（跳起來）陳柏宇！那個本島仔！他終於肯理我了！"], ["jianlin", "追分、成功……他是在酸我還是祝福我？這車票怎麼看都是兩個都有！"], ["jianlin", "回去幫我說：線上等著，我今天就連升三級！"]], "closing": [["jianlin", "對了，你是不是在查地名？澎湖的路我最熟，我帶你去！不過，先別告訴嘉恩我又跑出來玩……"], ["n", "建霖一邊東張西望，一邊把離島路名的故事講給你聽。"]]}, "wanjhen>sihyu": {"give": "這盒方塊酥，請帶給台中的黃思妤。才藝比賽之前，先吃點甜的，才有力氣跳舞，對吧？", "scene": [["n", "台中的街頭，黃思妤正對著手機鏡頭跳舞，周圍圍了一圈拍手的人。"], ["sihyu", "（收舞，喘氣）哇！有觀眾！——咦？你手上拿的是什麼？"], ["me", "葉宛真託我交給妳。（遞出嘉義方塊酥）"], ["sihyu", "方塊酥！！宛真的點心耶！她是在收買我嗎？"], ["sihyu", "（咬一口）……好吃。可惡，這樣我怎麼忍心跟她吵社辦。"], ["sihyu", "回去告訴她：才藝比賽，我不會手下留情！……但是點心要再寄一盒。"]], "closing": [["sihyu", "對了，你有在查地名嗎？台中的我們可熟了，我邊跳邊講給你聽！"], ["n", "思妤邊跳邊說，把台中路名的故事熱熱鬧鬧地講給你聽。"]]}};
 const ITEM_BY_ID = {}, ITEM_INDEX = {}, ITEM_SOURCE = {}, QUEST_REGION_OF = {}, PASS_REGION_OF = {};
 ITEM_DEFS.forEach(function(d, i){ ITEM_BY_ID[d.id] = d; ITEM_INDEX[d.id] = i; });
 Object.keys(ITEM_REWARDS).forEach(function(cid){ ITEM_REWARDS[cid].forEach(function(iid){ ITEM_SOURCE[iid] = cid; }); });
@@ -5846,7 +5846,7 @@ function lockRowHtml(lock){
     const have = ownsItem(d.item);
     return '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + (have ? itemIconHtml(it, 48) : '<div class="item-ico empty" style="width:48px;height:48px;font-size:1.4rem;">？</div>') +
       '<div><div style="font-weight:700;color:var(--gold-lt);">📦 託付任務</div><div style="font-size:.76rem;color:var(--mist);">' +
-      (have ? '把「' + escapeHtml(it.name) + '」交給 ' + escapeHtml(CHAR_BY_KEY[d.receiver].name) + '（' + escapeHtml(d.county) + '）。走進那個縣市，對話就會自動開始。'
+      (have ? '把「' + escapeHtml(it.name) + '」交給 ' + escapeHtml(CHAR_BY_KEY[d.receiver].name) + '（' + escapeHtml(d.county) + '）。到「' + escapeHtml(regionTitleOf(d.receiverRegion)) + '」主線劇情，等他出場就能當面交給他。'
             : '先完成「' + escapeHtml(regionTitleOf(d.giverRegion)) + '」主線取得「' + escapeHtml(it.name) + '」，再帶給 ' + escapeHtml(CHAR_BY_KEY[d.receiver].name) + '（' + escapeHtml(d.county) + '）。') +
       '</div></div></div>';
   }
@@ -5892,7 +5892,11 @@ function grantItems(popup){
   Object.keys(REGION_PASS).forEach(function(rid){
     if (!state.regionDone[rid]) return;
     if (!state.items[REGION_PASS[rid]]){ state.items[REGION_PASS[rid]] = true; got.push({type:"regionpass", key:rid}); }
-    if (!state.items[QUEST_ITEM[rid]]){ state.items[QUEST_ITEM[rid]] = true; got.push({type:"regionquest", key:rid}); }
+    if (!state.items[QUEST_ITEM[rid]]){
+      state.items[QUEST_ITEM[rid]] = true; got.push({type:"regionquest", key:rid});
+      const pl = deliveryPlan()[rid];
+      if (pl && state.regionDone[pl.receiverRegion]) state.delivered[rid] = true;   // 對方所在區域的主線已經通關，視為已交付
+    }
   });
   if (got.length){
     if (popup) got.forEach(queueUnlock);
@@ -5934,7 +5938,7 @@ function itemDeliveryHtml(id){
   const r = CHAR_BY_KEY[d.receiver];
   return questDelivered(id)
     ? '✅ 已交給 ' + escapeHtml(r.name) + '（' + escapeHtml(d.county) + '）'
-    : '📦 託付中：請把它交給 ' + escapeHtml(r.name) + '（' + escapeHtml(d.county) + '）。走進那個縣市，對話會自動開始。';
+    : '📦 託付中：請把它交給 ' + escapeHtml(r.name) + '（' + escapeHtml(d.county) + '）。到「' + escapeHtml(regionTitleOf(d.receiverRegion)) + '」主線劇情，等他出場就能當面交給他。';
 }
 function openItemModal(id){
   const d = ITEM_BY_ID[id]; if (!d) return;
@@ -5991,13 +5995,6 @@ function renderCountyItems(cname){
   const row = document.createElement("div"); row.className = "item-mini";
   list.forEach(function(d){ row.appendChild(itemSlotEl(d, 44)); });
   box.appendChild(row);
-  const pd = pendingDeliveryFor(cname);
-  if (pd){
-    const tip = document.createElement("div");
-    tip.className = "chain-reward"; tip.style.margin = "0 0 12px";
-    tip.textContent = "📦 " + CHAR_BY_KEY[pd.receiver].name + "正在這裡等你交付「" + ITEM_BY_ID[pd.item].name + "」";
-    box.appendChild(tip);
-  }
 }
 // 任務卡：鎖定／獎勵提示。回傳 true 表示目前被鎖住
 function decorateChainCard(card, chain){
@@ -6034,7 +6031,7 @@ function questCardEl(rid){
     else {
       const g = CHAR_BY_KEY[plan.giver], r = CHAR_BY_KEY[plan.receiver];
       sub = done ? "✅ 已交給 " + escapeHtml(r.name) + "（" + escapeHtml(plan.county) + "）<br>託付人：" + escapeHtml(g.name)
-                 : "📦 待交付：請交給 " + escapeHtml(r.name) + "（" + escapeHtml(plan.county) + "）<br>託付人：" + escapeHtml(g.name) + "。走進那個縣市，對話會自動開始";
+                 : "📦 待交付：請交給 " + escapeHtml(r.name) + "（" + escapeHtml(plan.county) + "）<br>託付人：" + escapeHtml(g.name) + "。到「" + escapeHtml(regionTitleOf(plan.receiverRegion)) + "」主線劇情，等他出場就能當面交給他";
     }
   }
   card.innerHTML = icon + '<div><div class="qt">' + title + '</div><div class="qs">' + sub + '</div></div>';
@@ -6142,7 +6139,6 @@ function chainHandoffSteps(chain, persona){
 }
 
 // ---------- 交付對話：帶著託付的道具，走進對方的家鄉縣市 ----------
-let deliveryBusy = false;
 function pendingDeliveryFor(cname){
   const plan = deliveryPlan();
   return Object.keys(plan).map(function(k){ return plan[k]; }).find(function(d){
@@ -6181,22 +6177,6 @@ function regionDeliverySteps(rid){
     steps.push({type:"effect", fn:function(){ markDelivered(d); }});
   });
   return steps;
-}
-function maybeDeliver(cname){
-  if (deliveryBusy || curScreenId !== "county" || currentCounty !== cname) return;
-  const d = pendingDeliveryFor(cname); if (!d) return;
-  if (unlockShowing || unlockQueue.length){ setTimeout(function(){ maybeDeliver(cname); }, 900); return; }   // 等「獲得道具」等彈窗關閉後再開始交付對話
-  if (!DELIVERY_SCRIPTS[d.key]) return;
-  deliveryBusy = true;
-  const rid = regionOf[cname];
-  const lines = deliveryLines(d, false, !roadsUnlocked(rid));
-  setBgmRegion(rid);
-  playSequence(scriptToSteps(lines), function(){
-    deliveryBusy = false;
-    markDelivered(d);
-    renderCountyScreen(cname);
-    showScreen("county");
-  });
 }
 
 function buildChainCard(chain){
@@ -6288,7 +6268,6 @@ function renderCountyScreen(cname){
   renderCountyProtagonists(cname);
   grantItems(false);
   renderCountyItems(cname);
-  setTimeout(function(){ maybeDeliver(cname); }, 500);
 
   const cc = COUNTY_CONTENT[cname] || {mainChains:[], sideQuests:[]};
 
