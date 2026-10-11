@@ -289,6 +289,7 @@ body{
   padding:13px 15px;border-radius:12px;cursor:pointer;
   background:rgba(255,255,255,.04);border:1px solid rgba(176,134,63,.25);
 }
+.county-card.locked{opacity:.55;filter:grayscale(1);cursor:not-allowed;}
 .county-card:active{background:rgba(255,255,255,.09);}
 .county-card .cname{font-family:var(--serif);font-weight:700;color:var(--paper);}
 .county-card .csub{font-size:.72rem;color:var(--mist);margin-top:2px;}
@@ -3571,12 +3572,7 @@ function regionOrder(){
   const i = Math.max(0, REGION_ORDER.indexOf(home));
   return REGION_ORDER.slice(i).concat(REGION_ORDER.slice(0, i));
 }
-function isRegionUnlocked(regionId){
-  const order = regionOrder();
-  const idx = order.indexOf(regionId);
-  if (idx <= 0) return true;
-  return !!state.regionDone[order[idx-1]];
-}
+function isRegionUnlocked(regionId){ return !regionUnlockInfo(regionId).locked; }
 function nextRegionName(afterId){
   const order = regionOrder();
   const i = order.indexOf(afterId);
@@ -3709,7 +3705,7 @@ function unlockContent(u){
       '<div class="detail-title" style="text-align:center;">' + escapeHtml(d.name) + '</div>'+
       '<div class="detail-old" style="text-align:center;">' + escapeHtml(regionTitleOf(rid)) + '・🎫 通行證</div>'+
       '<div class="detail-body">' + escapeHtml(d.desc) + '</div>'+
-      '<div class="detail-body" style="margin-top:6px;"><b>🔓 已開啟：</b>' + escapeHtml(regionNameOf(rid)) + '各縣市的「支線任務」' + (roadAuto ? '與「路名任務鏈」' : '') + '</div>'};
+      '<div class="detail-body" style="margin-top:6px;"><b>🔓 已開啟：</b>' + escapeHtml(regionNameOf(rid)) + '各縣市的地圖與「支線任務」' + (roadAuto ? '、「路名任務鏈」' : '') + '，下一區的地圖也解鎖了</div>'};
   }
   if (u.type === "regionquest"){
     const rid = u.key, d = ITEM_BY_ID[QUEST_ITEM[rid]]; if (!d) return null;
@@ -5636,13 +5632,13 @@ function renderWorldMap(){
     const sub = document.createElementNS(ns,"text");
     sub.setAttribute("x", lp.x); sub.setAttribute("y", lp.y+15);
     sub.setAttribute("class","region-sub"); sub.setAttribute("text-anchor","middle");
-    sub.textContent = unlocked ? (stat.done+"/"+stat.total+(done?" ✓":"")) : "尚未解鎖";
+    sub.textContent = unlocked ? (stat.done+"/"+stat.total+(done?" ✓":"")) : "需要通行證";
     g.appendChild(sub);
 
     if (unlocked){
       g.addEventListener("click", ()=>{ sfx("click"); renderRegionScreen(region.id); showScreen("region"); });
     } else {
-      g.addEventListener("click", ()=>{ toast("🔒 尚未解鎖，請先完成前一段旅程的主線劇情"); });
+      g.addEventListener("click", ()=>{ sfx("click"); showMapLockModal("region", region.id); });
     }
     svg.appendChild(g);
   });
@@ -5720,14 +5716,26 @@ function renderRegionScreen(regionId){
 
   const list = document.getElementById("county-list");
   list.innerHTML = "";
+  grantItems(false);
+  const rlock = countyUnlockInfo(region.counties[0]);
+  if (rlock.locked){
+    const note = document.createElement("div");
+    note.className = "chain-lock"; note.style.margin = "0 0 10px";
+    note.textContent = "🔒 各縣市預設為灰色。完成「" + region.title + "」主線劇情，取得通行證「" + ITEM_BY_ID[rlock.item].name + "」後，才會解鎖。";
+    list.appendChild(note);
+  }
   region.counties.forEach(cname=>{
     const arr = placesByCounty[cname]||[];
     const done = arr.filter(p=>state.discovered[p.id]).length;
+    const lk = countyUnlockInfo(cname);
     const card = document.createElement("div");
-    card.className = "county-card";
-    card.innerHTML = '<div><div class="cname">'+escapeHtml(cname)+'</div><div class="csub">'+arr.length+' 則地名記憶</div></div>'+
-      '<div class="cprog">'+done+'/'+arr.length+'</div>';
-    card.addEventListener("click", ()=>{ renderCountyScreen(cname); showScreen("county"); });
+    card.className = "county-card" + (lk.locked ? " locked" : "");
+    card.innerHTML = '<div><div class="cname">'+(lk.locked?'🔒 ':'')+escapeHtml(cname)+'</div><div class="csub">'+(lk.locked ? '需要通行證「'+escapeHtml(ITEM_BY_ID[lk.item].name)+'」' : arr.length+' 則地名記憶')+'</div></div>'+
+      '<div class="cprog">'+(lk.locked ? '' : done+'/'+arr.length)+'</div>';
+    card.addEventListener("click", ()=>{
+      if (lk.locked){ sfx("click"); showMapLockModal("county", cname); return; }
+      renderCountyScreen(cname); showScreen("county");
+    });
     list.appendChild(card);
   });
 
@@ -5741,7 +5749,8 @@ let currentCounty = null;
    道具分兩種：
    ① 🎫 通行證（type:"pass"）：拿到就會開啟部分地圖（任務鏈）。
       · 縣市任務鏈：完成後獲得道具，該道具開啟「下一條」任務鏈（ITEM_GATES）。
-      · 區域主線通關：獲得該區的通行證（REGION_PASS），開啟該區各縣市的「支線任務」。
+      · 區域主線通關：獲得該區的通行證（REGION_PASS），解鎖該區各縣市的地圖與「支線任務」，也解鎖下一區的地圖。
+      · 地圖預設灰色：起點區域開放；其餘區域需要前一區的通行證，縣市需要本區的通行證。點灰色處會顯示需要的道具。
    ② 📜 劇情任務道具（type:"quest"）：沒有開啟地圖的功能。區域主線通關時由主角群託付（QUEST_ITEM），
       帶著它走進對方的家鄉縣市就會觸發交付對話；交付後道具變成灰色，仍可點開看詳情。
       交付完成後，對方所在區域各縣市的「路名任務鏈」開啟；若該區沒有託付送達，路名任務鏈在該區主線通關後直接開啟。
@@ -5911,6 +5920,35 @@ function grantRegionItem(rid){
   if (QUEST_ITEM[rid] && !state.items[QUEST_ITEM[rid]]){ state.items[QUEST_ITEM[rid]] = true; queueUnlock({type:"regionquest", key:rid}); }
 }
 
+// ---------- 地圖解鎖（預設灰色，需要道具）----------
+// 區域：起點區域預設開放；其餘需要「前一區的通行證」（前一區主線通關時取得）
+function regionUnlockInfo(rid){
+  const order = regionOrder(), idx = order.indexOf(rid);
+  if (idx <= 0) return {locked:false};
+  const prev = order[idx - 1], item = REGION_PASS[prev];
+  return {locked: !(state.regionDone[prev] || ownsItem(item)), prev:prev, item:item};
+}
+// 縣市：需要「本區的通行證」（本區主線通關時取得）
+function countyUnlockInfo(cname){
+  const rid = regionOf[cname], item = REGION_PASS[rid];
+  return {locked: !(state.regionDone[rid] || ownsItem(item)), region:rid, item:item};
+}
+function showMapLockModal(kind, key){
+  let name, info, fromRid, msg;
+  if (kind === "region"){
+    info = regionUnlockInfo(key); name = regionNameOf(key); fromRid = info.prev;
+    msg = "要進入「" + escapeHtml(name) + "」，需要先取得這張通行證：";
+  } else {
+    info = countyUnlockInfo(key); name = key; fromRid = info.region;
+    msg = "要探索「" + escapeHtml(name) + "」，需要先取得這張通行證：";
+  }
+  const d = ITEM_BY_ID[info.item];
+  openModal('<div class="detail-title">🔒 ' + escapeHtml(name) + ' 尚未解鎖</div>'+
+    '<div class="detail-body">' + msg +
+    '<div style="display:flex;gap:10px;align-items:center;margin:10px 0;">' + '<div class="item-ico empty" style="width:56px;height:56px;font-size:1.6rem;">？</div>' +
+    '<div><div style="font-weight:700;color:var(--gold-lt);">🎫 ' + escapeHtml(d.name) + '</div><div style="font-size:.78rem;color:var(--mist);">完成「' + escapeHtml(regionTitleOf(fromRid)) + '」主線劇情就能取得</div></div></div></div>', {center:true});
+}
+
 function itemWhereHtml(id){
   const rid = PASS_REGION_OF[id] || QUEST_REGION_OF[id];
   if (rid) return "完成「" + escapeHtml(regionTitleOf(rid)) + "」主線劇情即可獲得";
@@ -5961,7 +5999,8 @@ function openItemModal(id){
       return '<div style="margin:3px 0;">' + (locked ? "🔒 " : "✅ ") + escapeHtml(o.county + "．" + chainShortTitle(o.chain)) +
         '（' + (o.kind === "main" ? "主線任務鏈" : "支線任務") + '）</div>';
     }).join("");
-    tail = '<div class="detail-body" style="margin-top:8px;"><b>🔑 可開啟的任務</b>' + opens + '</div>';
+    const mapNote = PASS_REGION_OF[id] ? '<div style="margin:3px 0;">🗺️ 解鎖地圖：' + escapeHtml(regionNameOf(PASS_REGION_OF[id])) + '各縣市；也解鎖下一區的地圖</div>' : '';
+    tail = '<div class="detail-body" style="margin-top:8px;"><b>🔑 可開啟的地方與任務</b>' + mapNote + opens + '</div>';
   }
   openModal('<div style="text-align:center;margin-bottom:8px;">' + itemIconHtml(d, 96, done) + '</div>'+
     '<div class="detail-title" style="text-align:center;">' + escapeHtml(d.name) + (done ? '（已交付）' : '') + '</div>'+
