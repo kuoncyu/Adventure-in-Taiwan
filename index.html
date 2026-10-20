@@ -30,6 +30,8 @@
 }
 *{box-sizing:border-box;}
 html,body{height:100%;}
+:root{--foot-h:24px;}
+body{padding-bottom:var(--foot-h);box-sizing:border-box;}
 body{
   margin:0;
   font-family:var(--sans);
@@ -42,7 +44,7 @@ body{
   overflow-x:hidden;
   user-select:none;
 }
-.app{max-width:920px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+.app{max-width:920px;margin:0 auto;min-height:calc(100vh - var(--foot-h));display:flex;flex-direction:column;position:relative;}
 
 /* ---------- 共用元件 ---------- */
 .hidden{display:none !important;}
@@ -122,6 +124,7 @@ body{
 .topbar .id{display:flex;align-items:center;gap:10px;font-family:var(--serif);flex:0 0 auto;}
 .topbar .id .pname{font-weight:700;color:var(--gold-lt);}
 .topbar .chapter{flex:1 1 auto;min-width:0;text-align:center;font-family:var(--serif);font-size:.8rem;letter-spacing:1px;color:var(--gold-lt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px;}
+.topbar .menu-btn.wide{width:auto;border-radius:17px;padding:0 10px;font-size:.78rem;white-space:nowrap;}
 .topbar .menu-btn{background:none;border:1px solid var(--mist);color:var(--paper);border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:1rem;}
 
 /* ---------- 標題畫面 ---------- */
@@ -420,9 +423,18 @@ body{
 .badge-card.locked .b-icon{filter:grayscale(1);opacity:.35;}
 .badge-card.locked .b-name{color:var(--mist);}
 .badge-card.earned .b-prog{color:var(--gold-lt);font-weight:700;}
+/* ---------- 頁尾：版本號＋版權說明（每個畫面都顯示） ---------- */
+#app-footer{
+  position:fixed;left:0;right:0;bottom:0;height:var(--foot-h);z-index:10001;pointer-events:none;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
+  background:rgba(10,16,15,.94);border-top:1px solid rgba(176,134,63,.25);
+  font-family:var(--sans);font-size:.62rem;color:var(--mist);letter-spacing:.02em;
+}
+#app-footer span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#app-footer .foot-ver{flex:0 0 auto;color:var(--gold-lt);}
 /* ---------- 底部導覽 ---------- */
 .bottom-nav{
-  position:fixed;left:0;right:0;bottom:0;max-width:920px;margin:0 auto;
+  position:fixed;left:0;right:0;bottom:var(--foot-h);max-width:920px;margin:0 auto;
   display:flex;background:rgba(15,25,24,.95);backdrop-filter:blur(8px);
   border-top:1px solid rgba(176,134,63,.35);z-index:90;
 }
@@ -434,8 +446,8 @@ body{
 .bottom-nav button.active{color:var(--gold-lt);}
 
 /* ---------- 彈窗 ---------- */
-.modal-back{position:fixed;inset:0;background:rgba(10,15,15,.72);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
-.modal-back.center{align-items:center;padding:20px;}
+.modal-back{position:fixed;inset:0;padding-bottom:var(--foot-h);background:rgba(10,15,15,.72);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.modal-back.center{align-items:center;padding:20px 20px calc(20px + var(--foot-h));}
 .modal-sheet{
   width:100%;max-width:640px;max-height:88vh;overflow-y:auto;
   border-radius:18px 18px 0 0;padding:20px 18px 26px;
@@ -612,7 +624,7 @@ body{
 <!-- ===================== 選角畫面 ===================== -->
 <div class="screen hidden" id="screen-charselect">
   <div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
-    <button class="brass-btn ghost small" id="cs-exit">🏠 返回主選單</button>
+    <button class="brass-btn ghost small" id="cs-exit">🏠 返回首頁</button>
   </div>
   <div class="cs-step-title" id="cs-title">選擇你的身分</div>
   <div class="cs-step-sub" id="cs-sub"></div>
@@ -733,6 +745,10 @@ body{
   <div class="codex-subtitle">🎒 隨行夥伴</div>
   <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="companion-codex-count"></div>
   <div class="codex-grid" id="companion-codex-grid"></div>
+
+  <div class="codex-subtitle">📖 劇情人物</div>
+  <div style="font-size:.78rem;color:var(--mist);margin-bottom:10px;" id="story-codex-count"></div>
+  <div class="codex-grid" id="story-codex-grid"></div>
 </div>
 
 <!-- ===================== 自由挑戰區 ===================== -->
@@ -773,6 +789,7 @@ body{
 </div>
 
 <!-- ===================== 動態彈窗容器 ===================== -->
+<div id="app-footer"><span class="foot-ver" id="foot-ver">版本</span><span class="foot-copy">© 2026 拾憶者物語・台灣地名尋根 RPG　版權所有，未經授權請勿轉載或重製</span></div>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
 
@@ -3352,6 +3369,68 @@ island:[
   });
 })();
 
+// =====================================================================
+// 劇情人物：主線劇情各站的 NPC（不含已在「隨行夥伴」裡的芊瑪、文瀾、拉罕、潘嫂、柯世安）
+// art：新增 NPC 的圖檔代號。圖放在 assets/npc/<art>.png（也接受 .webp / .jpg），沒有圖時自動用 emoji 代替。
+// 原本就有圖的 NPC（社寮公…）不用填 art，沿用圖檔資源包。
+// =====================================================================
+const STORY_NPC_INFO = {
+  "社寮公":{title:"和平島的老石靈", desc:"滿身藤壺與海藻的老石靈，守著和平島（舊稱社寮島）已經好幾百年。見證過三個政權先後插旗，說話慢條斯理、愛叨念，最受不了有人把『雞籠』的由來亂編。"},
+  "廟口老攤主":{art:"npc_miaokou", title:"基隆廟口的老攤主", desc:"在奠濟宮廟埕前顧了一輩子灶的老攤主，嗓門大、心腸熱，總會硬塞一碗熱湯給路過的旅人。最愛講『玉田町』——從『田美如玉』的稻浪，到今天的廟口夜市，是他一輩子的驕傲。"},
+  "艋舺姑":{title:"淡水河畔的獨木舟姑娘", desc:"聽得見槳聲的河岸精靈，記得凱達格蘭族人載著蕃薯與木材、划著獨木舟來市集交易的光景。說話輕柔，但聽到有人說艋舺是日本人亂取的名字，會非常堅決地反駁。"},
+  "女巫精靈":{title:"硫磺煙霧裡的女巫", desc:"住在北投終年不散的硫磺煙霧裡，名字源自凱達格蘭語『Patauw』（女巫）。神秘、愛打啞謎，卻很疼惜每一位願意認真聽故事的旅人。"},
+  "滬尾石滬公":{art:"npc_huwei", title:"淡水河口的石滬公", desc:"像石滬一樣沉穩的老漁翁魂，守著淡水河口的落日。對『滬尾』兩種由來並存的情況很淡定，卻絕不允許有人把滬尾說成賣魚尾巴的地方。"},
+  "九份老礦工":{art:"npc_jiufen", title:"九份山城的老礦工", desc:"戴著礦帽、滿身煤灰的老礦工，聽過金礦時代的喧囂，也見過礦業沒落後的寂靜。性格豪爽，愛講樟腦灶的故事，認為那比『九戶人家』的說法更有憑據。"},
+  "阿壢伯":{art:"npc_zhongli", title:"澗仔壢的老客家人", desc:"老街溪邊的客家阿伯，手上總拿著鐮刀和花生酥糖，逢人就招呼『坐下喝口涼水』。愛講『壢』字的由來，更愛強調中壢是商旅歇腳的好地方。"},
+  "牌樓老守衛":{art:"npc_daxi", title:"大溪老街的牌樓守衛", desc:"站在巴洛克牌樓下的老守衛，看過大溪從『大姑陷』一路改名到『大溪』。話不多，卻對每一次改字背後的故事記得清清楚楚。"},
+  "香山白鷺姑":{art:"npc_xiangshan", title:"香山濕地的白鷺姑", desc:"披著白羽、踩在潮間帶泥灘上的濕地精靈，守護著蚵田與候鳥。說話輕柔，總把道卡斯族竹塹社的記憶放在心上。"},
+  "迎曦門守門人":{art:"npc_yingxi", title:"竹塹城東門的守門人", desc:"守著竹塹城僅存的迎曦門，每天等第一道曙光。個性認真、有點孤單，最見不得有人說竹塹城『從來只有一座門』。"},
+  "新埔柿餅阿婆":{art:"npc_xinpu", title:"新埔的客家柿餅阿婆", desc:"在秋陽下翻曬柿餅的客家阿婆，說話慢條斯理，常忽然哼起山歌。她把『吧哩嘓』到『新埔』的故事，講得像在說自家的搬家史。"},
+  "司馬庫斯耆老":{art:"npc_smangus", title:"司馬庫斯的泰雅耆老", desc:"住在海拔約一千五百公尺雲霧間的泰雅族耆老，靜靜守護著紅檜巨木群與祖先馬庫斯的記憶。聲音低沉、字字認真，最看重『名字是用來記得人』這件事。"},
+  "石猴公":{art:"npc_luodong", title:"羅東的巨石猴靈", desc:"蹲在路旁、形似猴子的巨石化成的精靈，滿身青苔，說話愛開玩笑。他是『羅東』噶瑪蘭語音譯的活證據，也是蘭陽平原上最調皮的長輩。"},
+  "頭圍老墾首":{title:"蘭陽平原的老墾首", desc:"跟著吳沙從頭城踏出開墾蘭陽平原第一步的老墾首，滿臉風霜、聲音洪亮。翻過三貂嶺的風雨他都記得，最愛講『頭圍、二圍、三圍』的順序。"},
+
+  "阿富":{title:"貓裏的平原長者", desc:"道卡斯族貓裏社的後代，熟悉後龍溪沖積出的河谷平原。說話樸實溫和，談到『Pali』（平原）和貓里、貓裡、貓貍、貓裏五花八門的寫法時，眼睛會發亮。"},
+  "後壟社長老":{art:"npc_houlong", title:"後壟社的道卡斯長老", desc:"拄著竹杖的道卡斯族後壟社長老，記得社名、丘陵，與那句帶著苦味的稱呼。凡事先講三種說法，再慢慢問你怎麼想。"},
+  "大墩土地公":{title:"台中盆地的土地公", desc:"守著那塊從沼澤裡隆起的高地——也就是今天台中公園一帶——的老土地公。慈祥又愛碎念，從『大墩庄』講到砲台山，再講到『台中』的由來，一路不喘氣。"},
+  "林家老管家":{art:"npc_wufeng", title:"霧峰林家的老管家", desc:"提著一串鑰匙的林家老管家，待人客氣、談吐文雅。對『阿罩霧』與『霧峰』的由來，以及林家的往事，都有分寸地娓娓道來。"},
+  "船頭行老闆":{title:"鹿港港口的船頭行老闆", desc:"『一府二鹿三艋舺』時代，在鹿港港口經營船頭行的老闆。精打細算、見多識廣，對『鹿港』的四種由來說法如數家珍，最相信學者考證出的『鹿群聚集說』。"},
+  "阿水嬸":{art:"npc_xiushui", title:"秀水的灌溉嬸婆", desc:"挽著褲管、天天巡田水的嬸婆，爽朗大方又愛說笑。她笑著承認家鄉從前叫『臭水』，卻也驕傲地說，現在是花卉與蔬果之鄉。"},
+  "朝天宮香爐伯":{art:"npc_beigang", title:"北港朝天宮的香爐伯", desc:"顧著銅鐘與香爐的老廟公，見過數十萬信眾進香的盛況。個性虔誠嚴肅，對『笨港』的八種說法與那場山洪的故事，背得滾瓜爛熟。"},
+  "他里霧老獵人":{art:"npc_tarubu", title:"他里霧社的洪雅老獵人", desc:"撥開蒼莽草原走來的洪雅族老獵人，身上有草和泥土的味道。話不多，卻會一遍遍提醒你：『他里霧』的意思，就是草原。"},
+  "草鞋墩挑夫":{art:"npc_caotun", title:"草鞋墩的挑夫", desc:"肩扛扁擔、腳蹬草鞋的老挑夫，走過無數趟通往埔里的山路。豪邁、愛抱怨腳痛，也愛拿『破草鞋堆成小山』的故事逗旅人笑。"},
+
+  "諸羅守軍魂":{title:"死守諸羅城的軍魂", desc:"乾隆年間林爽文事件中，與軍民一起死守諸羅城數個月的守軍魂魄。個性剛毅、說話鏗鏘有力，守的不只是城池，還有『諸羅山』這個名字背後的記憶。"},
+  "山仔頂雲豹":{art:"npc_shejita", title:"射日塔下的雲豹守護者", desc:"守在嘉義公園山仔頂的雲豹銅雕之魂，象徵台灣的守護神。低沉威嚴，卻對旅人出奇溫柔，相信神話永遠不會過時。"},
+  "布袋老鹽工":{art:"npc_budai", title:"布袋潟湖的老鹽工", desc:"扛著鹽耙、被陽光曬得黝黑的老鹽工，對潟湖、沙嘴與鹽田瞭若指掌。說話直爽，愛數『松仔港』『蚊港』這一串別名。"},
+  "阿里山鄒族長老":{art:"npc_alishan", title:"阿里山的鄒族長老", desc:"坐在雲海上方的鄒族長老，見證過『吳鳳鄉』更名為『阿里山鄉』的過程。語氣平靜，但談到歷史是怎麼被書寫的，格外認真。"},
+  "赤崁守護靈":{title:"赤崁的守護靈", desc:"看著荷蘭人築起普羅民遮城、又看著鄭成功收復的守護靈。語氣沉穩，像個見過大風大浪的老館長，一開口就是『一六二四年』『一六六一年』。"},
+  "台窩灣少女魂":{title:"『台灣』名字的起點", desc:"西拉雅族台窩灣社的少女魂魄。Tayouan 這個名字從她這裡出發，成為『大員』，最後擴大成整座島的名字。個性溫柔，但談起這件事時格外鄭重。"},
+  "左衝鎮老屯兵":{art:"npc_zuoying", title:"左營舊城的左衝鎮屯兵魂", desc:"明鄭左衝鎮的老屯兵魂魄，一邊擦長槍，一邊守著左營舊城的城垣。嚴肅中帶點幽默，常拿『站住！』嚇旅人一跳。"},
+  "柴山山靈":{title:"打狗山的山靈", desc:"化身猛虎的柴山（打狗山）山靈。Takau——馬卡道族的莿竹——是他最珍視的名字記憶，脾氣直率，聽到有人亂解釋『打狗』會立刻皺眉。"},
+  "東隆宮王船匠":{art:"npc_donggang", title:"東港的王船匠", desc:"守著東隆宮迎王平安祭典的老船匠，雙手滿是木屑與油漆。話不多，講到王船和黑鮪魚時，眼睛會發亮。"},
+
+  "黑潮之魂":{title:"洄瀾的黑潮之魂", desc:"隨黑潮暖流迴旋的海洋之魂。講話像浪花一樣一圈接著一圈，最愛談花蓮從『洄瀾』變成『花蓮』的改名過程。"},
+  "巴布麓頭目":{title:"寶桑的巴布麓頭目", desc:"卑南族巴布麓社的頭目，部落是從核心的普悠瑪社分出去的一支。穩重、有領袖氣度，談起『寶桑』到『台東』的演變時，總是不疾不徐。"},
+
+  "天后宮老廟祝":{title:"媽宮天后宮的老廟祝", desc:"守著全台創建歷史最悠久的媽祖廟之一——娘媽宮——的老廟祝，慈祥、愛講媽祖與出海人的故事，最懂『媽宮』是怎麼變成『馬公』的。"},
+  "漁翁島燈塔守":{art:"npc_xiyu", title:"西嶼燈塔的守塔人", desc:"守著台灣最古老燈塔——漁翁島燈塔——的守塔人，提著燈走過風大的西嶼。話少，卻記得每一艘夜裡的船。"},
+  "守禦千戶所老兵魂":{title:"浯洲的老兵魂", desc:"金門『守禦千戶所』的老兵魂魄，守著從『浯洲』到『金門』的許多歷史層次。沉默寡言，但只要有人願意聽，就會從十二姓氏渡海來島的往事慢慢講起。"},
+  "古龍頭老村長":{art:"npc_guningtou", title:"古寧頭的老村長", desc:"望著海面的古寧頭老村長，見過戰火，也見過候鳥。說話緩慢沉穩，常以『古龍頭』的舊名起頭。"},
+  "北竿老漁民":{art:"npc_beigan", title:"北竿的老漁民", desc:"邊補漁網邊說故事的北竿老漁民，黝黑的臉上總帶著笑。最愛提竿塘、官塘、吳塘這些舊名，也愛誇家鄉的芹壁聚落。"}
+};
+// 新增 NPC 的圖檔：登錄名字對應，之後圖片載入成功就會自動出現在對話、人物頁
+Object.keys(STORY_NPC_INFO).forEach(function(n){ if (STORY_NPC_INFO[n].art) NAME_TO_ART[n] = STORY_NPC_INFO[n].art; });
+const STORY_NPC_ART_EXTS = ["webp","png","jpg"];
+const STORY_NPC_ART_FILES = (function(){
+  const out = [];
+  Object.keys(STORY_NPC_INFO).forEach(function(n){
+    const a = STORY_NPC_INFO[n].art; if (!a) return;
+    STORY_NPC_ART_EXTS.forEach(function(e){ out.push("assets/npc/" + a + "." + e); });
+  });
+  return out;
+})();
+
 
 // =====================================================================
 // 遊戲引擎：狀態管理 / 對話播放器 / 地圖 / 縣市探索 / 圖鑑 / 存讀檔
@@ -3454,7 +3533,8 @@ const AUTO_OFFLINE_DOWNLOAD = false;
    格式：YYYYMMDD。同一天第一次發佈用 20261011；同一天再發佈，依序加小寫字母後綴：20261011a、20261011b、20261011c…
    每次發佈新版：同時修改這裡的 APP_VERSION，以及 version.json 裡的 version（兩邊必須一致）。
    玩家連網開啟遊戲時，會到網站讀取 version.json；若比自己的版本新，就會詢問是否更新。 */
-const APP_VERSION = "20261019c";
+const APP_VERSION = "20261019f";
+{ const fv = document.getElementById("foot-ver"); if (fv) fv.textContent = "版本 " + APP_VERSION; }
 const VERSION_URL = "version.json";
 
 const Offline = (function(){
@@ -3475,6 +3555,7 @@ const Offline = (function(){
       {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7},
       {p:"assets/items.png", w:.5, opt:true}, {p:"assets/items.webp", w:.5, opt:true}, {p:"assets/items.jpg", w:.5, opt:true}   // 道具集合圖（可選，沒有就略過）
     ];
+    STORY_NPC_ART_FILES.forEach(function(p){ list.push({p:p, w:.2, opt:true}); });   // 劇情人物圖（可選，沒有就略過）
     Object.keys(BGM_FILES).forEach(function(k){ list.push({p:BGM_FOLDER + BGM_FILES[k], w:4.3, audio:true}); });
     const out = list.map(function(f){ f.url = new URL(f.p, base).href; return f; });
     const here = location.origin + location.pathname;
@@ -6813,11 +6894,77 @@ function drawCodexGrid(){
   document.getElementById("codex-count").textContent = "已蒐集 "+discoveredCount+" ／ 顯示 "+shown+" 則（全庫共 "+placesData.length+" 則地名記憶）";
 }
 
-// ---------- 人物（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴）----------
+// ---------- 劇情人物：新增 NPC 的圖檔（assets/npc/<代號>.webp|png|jpg）與人物頁 ----------
+function loadStoryNpcArt(){
+  Object.keys(STORY_NPC_INFO).forEach(function(name){
+    const key = STORY_NPC_INFO[name].art; if (!key || CHARACTER_ART[key]) return;
+    (function tryExt(i){
+      if (i >= STORY_NPC_ART_EXTS.length) return;      // 三種副檔名都沒有圖 → 維持用 emoji
+      const url = "assets/npc/" + key + "." + STORY_NPC_ART_EXTS[i] + "?v=" + APP_VERSION;
+      const img = new Image();
+      img.onload = function(){
+        let face = url;
+        try{       // 頭像：從原圖上半部裁出 128×128 的方形（失敗就直接用原圖）
+          const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h) * 0.56;
+          const c = document.createElement("canvas"); c.width = c.height = 128;
+          c.getContext("2d").drawImage(img, (w - side) / 2, h * 0.09, side, side, 0, 0, 128, 128);
+          face = c.toDataURL("image/webp", 0.85);
+        }catch(e){ face = url; }
+        CHARACTER_ART[key] = {face: face, full: url};
+      };
+      img.onerror = function(){ tryExt(i + 1); };
+      img.src = url;
+    })(0);
+  });
+}
+setTimeout(loadStoryNpcArt, 0);
+
+function storyNpcList(){
+  const out = [], seen = {};
+  REGIONS.forEach(function(r){ r.stops.forEach(function(st){
+    const info = STORY_NPC_INFO[st.npcName]; if (!info || seen[st.npcName]) return;
+    seen[st.npcName] = true;
+    const p = placesData[st.placeId];
+    out.push({name:st.npcName, icon:st.npcIcon, placeId:st.placeId, county:p ? p.c : "", place:p ? p.n : "", old:p ? p.o : "", title:info.title, desc:info.desc});
+  }); });
+  return out;
+}
+function renderStoryNpcCodex(grid, countEl){
+  grid.innerHTML = "";
+  const list = storyNpcList(); let met = 0;
+  list.forEach(function(n){
+    const done = !!state.discovered[n.placeId];
+    if (done) met++;
+    const card = document.createElement("div");
+    card.className = "codex-card" + (done ? "" : " locked");
+    if (done){
+      card.innerHTML = '<div class="cx-ava">' + avaHtml(n.name, n.icon) + '</div>' +
+        '<div class="cx-body"><div class="cx-county">' + escapeHtml(n.county + "・" + n.place) + '</div>' +
+        '<div class="cx-name">' + n.icon + ' ' + escapeHtml(n.name) + '</div><div class="cx-old">' + escapeHtml(n.title) + '</div></div>';
+      card.style.cursor = "pointer";
+      card.addEventListener("click", function(){
+        const a = artFor(n.name);
+        openModal((a ? '<img class="modal-fullart" src="' + a.full + '">' : "") +
+          '<div class="detail-title">' + n.icon + ' ' + escapeHtml(n.name) + '</div>' +
+          '<div class="detail-old">' + escapeHtml(n.title) + '・' + escapeHtml(n.county) + '</div>' +
+          '<div class="detail-body">' + escapeHtml(n.desc) + '</div>' +
+          '<div class="detail-body" style="margin-top:8px;font-size:.8rem;color:var(--mist);">📍 主線地名：' + escapeHtml(n.county + " " + n.place) + (n.old ? '（' + escapeHtml(n.old) + '）' : '') + '</div>', {center:true});
+      });
+    } else {
+      card.innerHTML = '<div class="cx-ava">？</div><div class="cx-body"><div class="cx-county">' + escapeHtml(n.county) +
+        '</div><div class="cx-name">？？？</div><div class="cx-old">尚未相遇</div></div>';
+    }
+    grid.appendChild(card);
+  });
+  countEl.textContent = "已遇見 " + met + " ／ 共 " + list.length + " 位劇情人物（在主線劇情裡喚醒地名，就會遇見他們）";
+}
+
+// ---------- 人物（主角群 ＋ 各縣市嚮導 ＋ 隨行夥伴 ＋ 劇情人物）----------
 function renderPeopleScreen(){
   renderProtagonistCodex(document.getElementById("protagonist-codex-grid"), document.getElementById("protagonist-codex-count"));
   renderGuideCodex(document.getElementById("guide-codex-grid"), document.getElementById("guide-codex-count"));
   renderCompanionCodex(document.getElementById("companion-codex-grid"), document.getElementById("companion-codex-count"));
+  renderStoryNpcCodex(document.getElementById("story-codex-grid"), document.getElementById("story-codex-count"));
 }
 
 // grid / countEl 可傳入任意容器（例如彈窗內的暫時容器），預設仍為「人物」畫面本身的容器
@@ -7070,12 +7217,14 @@ function renderTopbar(){
     '<div style="display:flex;gap:6px;">'+
       '<button class="menu-btn" id="topbar-settings" title="設定">⚙️</button>'+
       '<button class="menu-btn" id="topbar-save">💾</button>'+
-      '<button class="menu-btn" id="topbar-menu" title="回主選單">🏠</button>'+
+      '<button class="menu-btn wide" id="topbar-map" title="回到地圖">🧭 地圖</button>'+
+      '<button class="menu-btn wide" id="topbar-menu" title="回到首頁">🏠 首頁</button>'+
       '<button class="menu-btn" id="topbar-exit" title="存檔並結束遊戲">🚪</button>'+
     '</div>';
   bar.querySelector("#topbar-id").addEventListener("click", openPlayerInfoModal);
   bar.querySelector("#topbar-save").addEventListener("click", ()=>{ sfx("click"); openSaveModal(); });
   bar.querySelector("#topbar-settings").addEventListener("click", ()=>{ sfx("click"); openSettingsModal(); });
+  bar.querySelector("#topbar-map").addEventListener("click", backToMap);
   bar.querySelector("#topbar-menu").addEventListener("click", backToMainMenu);
   bar.querySelector("#topbar-exit").addEventListener("click", openExitGameModal);
 }
@@ -7642,17 +7791,46 @@ function backToMainMenu(){
   sfx("click");
   if (isDialogueActive()){
     const back = openModal(
-      '<div class="detail-title">🏠 回到主選單</div>'+
-      '<div class="detail-body">目前劇情尚未播放完畢，回到主選單會中斷這段對話（旅程進度會自動存檔，但這段對話需要重新播放）。確定要回主選單嗎？</div>'+
+      '<div class="detail-title">🏠 回到首頁</div>'+
+      '<div class="detail-body">目前劇情尚未播放完畢，回到首頁會中斷這段對話（旅程進度會自動存檔，但這段對話需要重新播放）。確定要回到首頁嗎？</div>'+
       '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
         '<button class="brass-btn ghost small" id="menu-cancel-btn">取消</button>'+
-        '<button class="brass-btn small" id="menu-confirm-btn">確定回主選單</button>'+
+        '<button class="brass-btn small" id="menu-confirm-btn">確定回到首頁</button>'+
       '</div>'
       , {center:true});
     back.querySelector("#menu-cancel-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
     back.querySelector("#menu-confirm-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); goToMainMenu(); });
   } else {
     goToMainMenu();
+  }
+}
+
+// ---------- 回到地圖（與「回到首頁」不同：留在遊戲裡，只是回到世界地圖）----------
+function goToMap(){
+  if (typing){ clearInterval(typing); typing = null; }
+  dlgSteps = []; dlgIdx = -1; dlgOnDone = null;
+  curSceneBg = null;
+  setChapterLabel("");
+  const bgEl = dlgSceneBgEl(); if (bgEl) bgEl.classList.remove("on");
+  document.querySelectorAll("#modal-root .modal-back").forEach(m=>m.remove());
+  renderWorldMap(); renderTopbar();
+  showScreen("worldmap");
+}
+function backToMap(){
+  sfx("click");
+  if (isDialogueActive()){
+    const back = openModal(
+      '<div class="detail-title">🧭 回到地圖</div>'+
+      '<div class="detail-body">目前劇情尚未播放完畢，回到地圖會中斷這段對話（旅程進度會自動存檔，但這段對話需要重新播放）。確定要回到地圖嗎？</div>'+
+      '<div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">'+
+        '<button class="brass-btn ghost small" id="map-cancel-btn">取消</button>'+
+        '<button class="brass-btn small" id="map-confirm-btn">確定回到地圖</button>'+
+      '</div>'
+      , {center:true});
+    back.querySelector("#map-cancel-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); });
+    back.querySelector("#map-confirm-btn").addEventListener("click", ()=>{ sfx("click"); back.remove(); goToMap(); });
+  } else {
+    goToMap();
   }
 }
 
