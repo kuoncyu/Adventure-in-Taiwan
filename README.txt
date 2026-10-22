@@ -1,7 +1,7 @@
 【拾憶者物語 離線資料包版】—— 放到 GitHub Pages 使用
 
 檔案（全部放在同一層，也就是 repo 根目錄或同一個資料夾）：
-  index.html、version.json、sw.js、assets/（4 個檔案）、7 個 bgm_*.mp3
+  index.html、version.json、sw.js、assets/（6 個檔案，含 npcs.pack 與 npcs.manifest.json）、7 個 bgm_*.mp3
 
 步驟：
 1. 把整包上傳到 GitHub repo。
@@ -60,11 +60,13 @@
 挑戰模式：進入測驗後才會播放挑戰音樂，在分頁選單時是一般的大廳音樂。
 
 
-【劇情人物圖（可選）】
+【劇情人物圖】
 主線劇情新增了 24 位 NPC（廟口老攤主、滬尾石滬公…），人物頁新增「📖 劇情人物」分類，每位都有介紹。
-想幫他們加上圖片：把圖放進 assets/npc/ 資料夾，檔名＝「圖檔代號」＋副檔名（.webp、.png、.jpg 都可以，三選一）。
-例如：assets/npc/npc_miaokou.png。
-24 位新增 NPC 的圖已全部完成（assets/npc/ 共 24 個 .webp）。
+他們的圖已打包成資料檔 assets/npcs.pack ＋ assets/npcs.manifest.json（和主角群照片 characters.pack 同樣的讀取方式：
+第一次進遊戲下載一次，存進瀏覽器，之後直接從本機讀取，不會逐張載入，也不需要 assets/npc 資料夾）。
+想更換或新增 NPC 圖：把圖放進一個資料夾（檔名＝圖檔代號，例如 npc_miaokou.png），執行 make_npc_pack.py，
+會重新產生 npcs.pack 與 npcs.manifest.json，換掉 assets/ 裡的兩個檔案，並把 APP_VERSION 與 version.json 一起加版本號即可。
+npcs.pack 沒有的人物，對話與人物頁會自動用 emoji 代替，不影響遊玩。
 
 【畫面底部】
 每個畫面最下方固定顯示「版本號＋版權說明」。版權文字在 index.html 搜尋「版權所有」即可修改。

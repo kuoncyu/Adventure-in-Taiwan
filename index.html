@@ -833,6 +833,24 @@ const CHARACTER_ART = {};
       }
     },
     {
+      name: "npcs",        // 劇情人物圖（assets/npcs.pack）：和主角群圖一樣首次下載後存進 IndexedDB，之後直接從本機讀取
+      manifestUrl: "assets/npcs.manifest.json",
+      packUrl: "assets/npcs.pack",
+      apply: function(manifest, buffer){
+        var items = manifest.items;
+        for (var i = 0; i < items.length; i++){
+          var it = items[i];
+          try{
+            var slice = buffer.slice(it.offset, it.offset + it.length);
+            var blob = new Blob([slice], { type: it.mime || "image/webp" });
+            var url = URL.createObjectURL(blob);
+            if (!CHARACTER_ART[it.key]) CHARACTER_ART[it.key] = {};
+            CHARACTER_ART[it.key][it.part] = url;
+          }catch(e){ /* 單一項目壞掉時跳過，不中斷其餘圖檔的載入 */ }
+        }
+      }
+    },
+    {
       name: "scenes",
       manifestUrl: "assets/scenes.manifest.json",
       packUrl: "assets/scenes.pack",
@@ -3371,8 +3389,8 @@ island:[
 
 // =====================================================================
 // 劇情人物：主線劇情各站的 NPC（不含已在「隨行夥伴」裡的芊瑪、文瀾、拉罕、潘嫂、柯世安）
-// art：新增 NPC 的圖檔代號。圖放在 assets/npc/<art>.png（也接受 .webp / .jpg），沒有圖時自動用 emoji 代替。
-// 原本就有圖的 NPC（社寮公…）不用填 art，沿用圖檔資源包。
+// art：新增 NPC 的圖檔代號，圖檔打包在 assets/npcs.pack（用 make_npc_pack.py 產生），沒有圖時自動用 emoji 代替。
+// 原本就有圖的 NPC（社寮公…）不用填 art，沿用角色圖資源包（characters.pack）。
 // =====================================================================
 const STORY_NPC_INFO = {
   "社寮公":{title:"和平島的老石靈", desc:"滿身藤壺與海藻的老石靈，守著和平島（舊稱社寮島）已經好幾百年。見證過三個政權先後插旗，說話慢條斯理、愛叨念，最受不了有人把『雞籠』的由來亂編。"},
@@ -3419,18 +3437,8 @@ const STORY_NPC_INFO = {
   "古龍頭老村長":{art:"npc_guningtou", title:"古寧頭的老村長", desc:"望著海面的古寧頭老村長，見過戰火，也見過候鳥。說話緩慢沉穩，常以『古龍頭』的舊名起頭。"},
   "北竿老漁民":{art:"npc_beigan", title:"北竿的老漁民", desc:"邊補漁網邊說故事的北竿老漁民，黝黑的臉上總帶著笑。最愛提竿塘、官塘、吳塘這些舊名，也愛誇家鄉的芹壁聚落。"}
 };
-// 新增 NPC 的圖檔：登錄名字對應，之後圖片載入成功就會自動出現在對話、人物頁
+// 新增 NPC 的圖檔：登錄名字對應，圖檔載入後就會自動出現在對話、人物頁
 Object.keys(STORY_NPC_INFO).forEach(function(n){ if (STORY_NPC_INFO[n].art) NAME_TO_ART[n] = STORY_NPC_INFO[n].art; });
-const STORY_NPC_ART_EXTS = ["webp","png","jpg"];
-const STORY_NPC_ART_FILES = (function(){
-  const out = [];
-  Object.keys(STORY_NPC_INFO).forEach(function(n){
-    const a = STORY_NPC_INFO[n].art; if (!a) return;
-    STORY_NPC_ART_EXTS.forEach(function(e){ out.push("assets/npc/" + a + "." + e); });
-  });
-  return out;
-})();
-
 // =====================================================================
 // 答錯時的「NPC 個人特色對話」：玩家答錯主線／任務鏈的測驗後，NPC 先用自己的口吻回應，
 // 接著把剛剛的內容再說一遍（重播該站的介紹），主角表示會再聽仔細，然後重新作答。
@@ -3614,7 +3622,7 @@ const AUTO_OFFLINE_DOWNLOAD = false;
    格式：YYYYMMDD。同一天第一次發佈用 20261011；同一天再發佈，依序加小寫字母後綴：20261011a、20261011b、20261011c…
    每次發佈新版：同時修改這裡的 APP_VERSION，以及 version.json 裡的 version（兩邊必須一致）。
    玩家連網開啟遊戲時，會到網站讀取 version.json；若比自己的版本新，就會詢問是否更新。 */
-const APP_VERSION = "20261019g";
+const APP_VERSION = "20261022";
 { const fv = document.getElementById("foot-ver"); if (fv) fv.textContent = "版本 " + APP_VERSION; }
 const VERSION_URL = "version.json";
 
@@ -3633,10 +3641,10 @@ const Offline = (function(){
     const base = new URL(".", location.href);
     const list = [
       {p:"index.html", w:2}, {p:"assets/characters.manifest.json", w:.01}, {p:"assets/characters.pack", w:15},
+      {p:"assets/npcs.manifest.json", w:.01}, {p:"assets/npcs.pack", w:3.3},
       {p:"assets/scenes.manifest.json", w:.01}, {p:"assets/scenes.pack", w:1.7},
       {p:"assets/items.png", w:.5, opt:true}, {p:"assets/items.webp", w:.5, opt:true}, {p:"assets/items.jpg", w:.5, opt:true}   // 道具集合圖（可選，沒有就略過）
     ];
-    STORY_NPC_ART_FILES.forEach(function(p){ list.push({p:p, w:.2, opt:true}); });   // 劇情人物圖（可選，沒有就略過）
     Object.keys(BGM_FILES).forEach(function(k){ list.push({p:BGM_FOLDER + BGM_FILES[k], w:4.3, audio:true}); });
     const out = list.map(function(f){ f.url = new URL(f.p, base).href; return f; });
     const here = location.origin + location.pathname;
@@ -7007,31 +7015,7 @@ function drawCodexGrid(){
   document.getElementById("codex-count").textContent = "已蒐集 "+discoveredCount+" ／ 顯示 "+shown+" 則（全庫共 "+placesData.length+" 則地名記憶）";
 }
 
-// ---------- 劇情人物：新增 NPC 的圖檔（assets/npc/<代號>.webp|png|jpg）與人物頁 ----------
-function loadStoryNpcArt(){
-  Object.keys(STORY_NPC_INFO).forEach(function(name){
-    const key = STORY_NPC_INFO[name].art; if (!key || CHARACTER_ART[key]) return;
-    (function tryExt(i){
-      if (i >= STORY_NPC_ART_EXTS.length) return;      // 三種副檔名都沒有圖 → 維持用 emoji
-      const url = "assets/npc/" + key + "." + STORY_NPC_ART_EXTS[i] + "?v=" + APP_VERSION;
-      const img = new Image();
-      img.onload = function(){
-        let face = url;
-        try{       // 頭像：從原圖上半部裁出 128×128 的方形（失敗就直接用原圖）
-          const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h) * 0.56;
-          const c = document.createElement("canvas"); c.width = c.height = 128;
-          c.getContext("2d").drawImage(img, (w - side) / 2, h * 0.09, side, side, 0, 0, 128, 128);
-          face = c.toDataURL("image/webp", 0.85);
-        }catch(e){ face = url; }
-        CHARACTER_ART[key] = {face: face, full: url};
-      };
-      img.onerror = function(){ tryExt(i + 1); };
-      img.src = url;
-    })(0);
-  });
-}
-setTimeout(loadStoryNpcArt, 0);
-
+// ---------- 劇情人物人物頁（圖檔由 assets/npcs.pack 載入，見檔案開頭的資源包載入器）----------
 function storyNpcList(){
   const out = [], seen = {};
   REGIONS.forEach(function(r){ r.stops.forEach(function(st){
